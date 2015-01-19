@@ -1,12 +1,12 @@
 # λ-17
 
+![preview](example.gif)
+
 ## Installation
 
 Meant to be used with prezto. Just put file
 [prompt\_lambda17\_setup](prompt_lambda17_setup) into  
 `~/zprezto/modules/prompt/functions/`.
-
-![preview](example.gif)
 
 `lambda17` should appear in `prompt` command output after shell restart.
 
