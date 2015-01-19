@@ -1,0 +1,54 @@
+function prompt_lambda17_precmd {
+    git-info
+}
+
+function prompt_lambda17_help {
+    cat <<-END
+	Prompt will display specified <letter> colored <fg_color> in space
+	padded box with background color <bg_color>.
+
+	<letter> by default is λ.
+	<fg_color> by default is white.
+	<bg_color> by default is red.
+
+	prompt lambda17 <fg_color> <bg_color> <letter>
+END
+}
+
+function prompt_lambda17_setup {
+    setopt LOCAL_OPTIONS
+    unsetopt XTRACE KSH_ARRAYS
+
+    prompt_opts=(cr percent subst)
+
+    autoload -Uz add-zsh-hook
+    add-zsh-hook precmd prompt_lambda17_precmd
+
+    zstyle ':prezto:module:editor:info:keymap:primary' format ' '
+    zstyle ':prezto:module:editor:info:keymap:alternate' format '·'
+
+    zstyle ':prezto:module:git:info' verbose 'yes'
+    zstyle ':prezto:module:git:info:commit' format '%F{yellow}%.7c%f'
+    zstyle ':prezto:module:git:info:branch' format '%F{green}%b%f'
+    zstyle ':prezto:module:git:info:clean' format ''
+    zstyle ':prezto:module:git:info:dirty' format '%F{red}✗%f'
+    zstyle ':prezto:module:git:info:keys' format \
+        'prompt' ' %F{green}%f$(coalesce "%b" "%p" "%c")${git_info[rprompt]}%s%F{green}%f' \
+        'rprompt' '%C%D'
+
+    # setting color
+    PROMPT="%B%F{${1:-white}}%K{${2:-red}}"
+
+    # setting keymap display (vi-mode) and <letter>.
+    PROMPT="$PROMPT\${editor_info[keymap]}${3:-λ}\${editor_info[keymap]}"
+
+    # setting path info
+    PROMPT="$PROMPT%k%f %~%b"
+
+    # setting git info
+    PROMPT="$PROMPT\${(e)git_info[prompt]} "
+
+    RPROMPT=''
+}
+
+prompt_lambda17_setup "$@"
