@@ -1,5 +1,18 @@
 function prompt_lambda17_precmd {
-    git-info
+    _lambda17_git_info=""
+
+    local head_ref=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    if [ -z "$head_ref" ]; then
+       return
+    fi
+
+    local is_dirty=""
+    local git_status=$(git status --porcelain)
+    if [ "$git_status" ]; then
+        is_dirty="✗"
+    fi
+
+    _lambda17_git_info="%F{green}$head_ref%f%F{red}$is_dirty%f "
 }
 
 function prompt_lambda17_help {
@@ -27,15 +40,6 @@ function prompt_lambda17_setup {
     zstyle ':prezto:module:editor:info:keymap:primary' format ' '
     zstyle ':prezto:module:editor:info:keymap:alternate' format '·'
 
-    zstyle ':prezto:module:git:info' verbose 'yes'
-    zstyle ':prezto:module:git:info:commit' format '%F{yellow}%.7c%f'
-    zstyle ':prezto:module:git:info:branch' format '%F{green}%b%f'
-    zstyle ':prezto:module:git:info:clean' format ''
-    zstyle ':prezto:module:git:info:dirty' format '%F{red}✗%f'
-    zstyle ':prezto:module:git:info:keys' format \
-        'prompt' ' %F{green}%f$(coalesce "%b" "%p" "%c")${git_info[rprompt]}%s%F{green}%f' \
-        'rprompt' '%C%D'
-
     # setting color
     PROMPT="%B%F{${1:-white}}%K{${2:-red}}"
 
@@ -46,7 +50,7 @@ function prompt_lambda17_setup {
     PROMPT="$PROMPT%k%f %~%b"
 
     # setting git info
-    PROMPT="$PROMPT\${(e)git_info[prompt]} "
+    PROMPT="$PROMPT \$_lambda17_git_info"
 
     RPROMPT=''
 }
