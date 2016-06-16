@@ -44,7 +44,7 @@ function prompt_lambda17_setup {
     PROMPT="%B%F{${1:-white}}%K{${2:-red}}"
 
     # setting keymap display (vi-mode) and <letter>.
-    PROMPT="$PROMPT\${editor_info[keymap]}${3:-λ}\${editor_info[keymap]}"
+    PROMPT="$PROMPT\${editor_info[keymap]:- }${3:-λ}\${editor_info[keymap]:- }"
 
     # setting path info
     PROMPT="$PROMPT%k%f %~%b"
