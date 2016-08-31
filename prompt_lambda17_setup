@@ -1,21 +1,39 @@
-function prompt_lambda17_precmd {
-    _lambda17_git_info=""
+lambda17:update() {
+    local -A blocks
 
-    local head_ref=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    if [ -z "$head_ref" ]; then
-       return
-    fi
+    zstyle -g blocks "lambda17:blocks:*"
 
-    local is_dirty=""
-    local git_status=$(git status --porcelain)
-    if [ "$git_status" ]; then
-        is_dirty="✗"
-    fi
+    _lambda17_prompt=""
+    for func in "${blocks[@]}"; do
+        _lambda17_prompt+=$($func)
+    done
 
-    _lambda17_git_info="%F{green}$head_ref%f%F{red}$is_dirty%f "
+    #zstyle -g _lambda17_sign_left  lambda17 sign:left
+    #zstyle -g _lambda17_sign_right lambda17 sign:right
+    #zstyle -g _lambda17_directory  lambda17 directory
+
+    #_lambda17_directory=""
+    #if [[ "$(pwd)" != "$HOME" ]]; then
+    #    _lambda17_directory="%1/"
+    #fi
+
+    #_lambda17_git_info=""
+
+    #local head_ref=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    #if [ -z "$head_ref" ]; then
+    #   return
+    #fi
+
+    #local is_dirty=""
+    #local git_status=$(git status --porcelain)
+    #if [ "$git_status" ]; then
+    #    is_dirty="✗"
+    #fi
+
+    #_lambda17_git_info="%F{green}$head_ref%f%F{red}$is_dirty%f"
 }
 
-function prompt_lambda17_help {
+lambda17:help() {
     cat <<-END
 	Prompt will display specified <letter> colored <fg_color> in space
 	padded box with background color <bg_color>.
@@ -28,31 +46,50 @@ function prompt_lambda17_help {
 END
 }
 
-function prompt_lambda17_setup {
-    setopt LOCAL_OPTIONS
-    unsetopt XTRACE KSH_ARRAYS
+lambda17:setup() {
+    #setopt LOCAL_OPTIONS
+    #unsetopt XTRACE KSH_ARRAYS
 
     prompt_opts=(cr percent subst)
 
     autoload -Uz add-zsh-hook
-    add-zsh-hook precmd prompt_lambda17_precmd
 
-    zstyle ':prezto:module:editor:info:keymap:primary' format ' '
-    zstyle ':prezto:module:editor:info:keymap:alternate' format '·'
+    add-zsh-hook precmd lambda17:update
 
-    # setting color
-    PROMPT="%B%F{${1:-white}}%K{${2:-red}}"
+    ## setting color
+    #PROMPT="%B%F{${1:-white}}%K{${2:-red}}"
 
-    # setting keymap display (vi-mode) and <letter>.
-    PROMPT="$PROMPT\${editor_info[keymap]:- }${3:-λ}\${editor_info[keymap]:- }"
+    ## setting <letter> and surrounding
+    #PROMPT="$PROMPT\$_lambda17_sign_left${3:-λ}\$_lambda17_sign_right"
 
-    # setting path info
-    PROMPT="$PROMPT%k%f %~%b"
+    ## setting path info
+    #PROMPT="$PROMPT%k%f\$_lambda17_directory%b"
 
-    # setting git info
-    PROMPT="$PROMPT \$_lambda17_git_info"
+    ## setting git info
+    #PROMPT="$PROMPT\$_lambda17_git_info "
 
-    RPROMPT=''
+    #RPROMPT=''
+    PROMPT="\${_lambda17_prompt}"
+    RPROMPT=""
 }
 
-prompt_lambda17_setup "$@"
+lambda17:get-option() {
+    zstyle -T "lambda17:blocks:$2" "$3" &&
+        zstyle -g "$1" "lambda17:blocks:$2" "$3"
+}
+
+lambda17:set-option() {
+    zstyle "lambda17:blocks:$1" "$2" "${@:3:}"
+}
+
+lambda17:blocks:sigils() {
+    local -a sigils
+
+    lambda17:get-option sigils 
+}
+
+# prompt interface
+
+prompt_lambda17_help() lambda17:help
+
+lambda17:setup "$@"
