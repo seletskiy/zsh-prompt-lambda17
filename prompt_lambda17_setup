@@ -1,39 +1,33 @@
+typeset -g  _lambda17_prompt=''
+typeset -g  _lambda17_machine_id=''
+typeset -gA _lambda17_cache=()
+
 lambda17:update() {
-    local -A blocks
-
-    zstyle -g blocks "lambda17:blocks:*"
-
     _lambda17_prompt=""
-    for func in "${blocks[@]}"; do
-        _lambda17_prompt+=$($func)
-    done
+    _lambda17_cache=()
 
-    #zstyle -g _lambda17_sign_left  lambda17 sign:left
-    #zstyle -g _lambda17_sign_right lambda17 sign:right
-    #zstyle -g _lambda17_directory  lambda17 directory
-
-    #_lambda17_directory=""
-    #if [[ "$(pwd)" != "$HOME" ]]; then
-    #    _lambda17_directory="%1/"
-    #fi
-
-    #_lambda17_git_info=""
-
-    #local head_ref=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    #if [ -z "$head_ref" ]; then
-    #   return
-    #fi
-
-    #local is_dirty=""
-    #local git_status=$(git status --porcelain)
-    #if [ "$git_status" ]; then
-    #    is_dirty="✗"
-    #fi
-
-    #_lambda17_git_info="%F{green}$head_ref%f%F{red}$is_dirty%f"
+    :lambda17:compile _lambda17_prompt
 }
 
-lambda17:help() {
+:lambda17:compile() {
+    local __namespace__="lambda17${(jjj)${@:2}[@]/#/>}"
+
+    local -a __blocks__
+    zstyle -g __blocks__ "$__namespace__"
+
+    local __func__
+    local __id__
+    local __out__
+    for __id__ in "${__blocks__[@]}"; do
+        zstyle -s "$__namespace__" "$__id__" __func__
+
+        eval "$($__func__ "$__id__" > >(__out__=$(cat); typeset __out__) &&
+            typeset -p _lambda17_cache | sed s/-A/-Ag/)"
+        eval "$1+=\$__out__"
+    done
+}
+
+:lambda17:help() {
     cat <<-END
 	Prompt will display specified <letter> colored <fg_color> in space
 	padded box with background color <bg_color>.
@@ -46,50 +40,289 @@ lambda17:help() {
 END
 }
 
-lambda17:setup() {
-    #setopt LOCAL_OPTIONS
-    #unsetopt XTRACE KSH_ARRAYS
+lambda17:cached() {
+    local __key__="${@:2}"
+    local __cached__=${_lambda17_cache["$__key__"]}
 
+    if [[ "$__cached__" ]]; then
+        eval "$(printf '%s=${__cached__#* }' "$1")"
+
+        return "${__cached__%% *}"
+    else
+        local __null__
+
+        eval "$(
+            printf '%s=$(eval "${@:2}")' "${1:-__null__}"
+        )"
+
+        eval "$(
+            printf '_lambda17_cache["$__key__"]="%d $%s"' "$?" "${1:-__null__}"
+        )"
+
+        lambda17:cached "$@"
+    fi
+}
+
+lambda17:color() {
+    local generation="${1:-0}"
+
+    if [[ ! "$_lambda17_machine_id" ]]; then
+        _lambda17_machine_id="$(systemd-machine-id-setup --print)"
+    fi
+
+    # based upon http://jimlund.org/blog/pics/colortest_iTerm.png
+    local lookback=$(( $generation * 3 ))
+    local seed=$(( 0x${_lambda17_machine_id:1:2} ))
+    local base=$(( 16 + ($seed % (230 - 16)) ))
+    local block=$(( ($base - 16) / 6 ))
+    local index=$(( ($base - 16) % 6 ))
+    local next=$((
+        (($block >= $lookback)
+            ? ($block - $lookback)
+            : (6 * 6 - $lookback + $block)
+        ) * 6 + 16 + $index + 2
+    ))
+
+    printf "%s" "$next"
+}
+
+:lambda17:setup() {
     prompt_opts=(cr percent subst)
 
     autoload -Uz add-zsh-hook
 
     add-zsh-hook precmd lambda17:update
 
-    ## setting color
-    #PROMPT="%B%F{${1:-white}}%K{${2:-red}}"
+    zstyle "lambda17" 00-banner lambda17:block:panel
+    zstyle "lambda17>00-banner" 05-sign lambda17:block:sign
+    zstyle "lambda17" 09-arrow lambda17:block:transition
+    zstyle "lambda17" 10-dir lambda17:block:panel
+    zstyle "lambda17>10-dir" 15-pwd lambda17:block:dir
+    zstyle "lambda17" 20-git lambda17:block:panel
+    zstyle "lambda17>20-git" 25-head lambda17:block:git:head
+    zstyle "lambda17" 26-clean lambda17:block:sign
+    zstyle "lambda17" 26-dirty lambda17:block:sign
+    zstyle "lambda17" 90-command lambda17:block:panel
+    zstyle "lambda17>90-command" 91-return lambda17:block:sign
 
-    ## setting <letter> and surrounding
-    #PROMPT="$PROMPT\$_lambda17_sign_left${3:-λ}\$_lambda17_sign_right"
+    lambda17:color >/dev/null
 
-    ## setting path info
-    #PROMPT="$PROMPT%k%f\$_lambda17_directory%b"
+    zstyle "lambda17:00-banner" bg "$(lambda17:color 0)"
+    zstyle "lambda17:00-banner" fg "$(lambda17:color 1)"
+    zstyle "lambda17:00-banner" min-width 2
+    zstyle "lambda17:26-clean" sign "✓"
+    zstyle "lambda17:26-clean" condition "lambda17:git:is-clean"
+    zstyle "lambda17:26-clean" fg "green"
+    zstyle "lambda17:26-dirty" sign "✗"
+    zstyle "lambda17:26-dirty" condition "lambda17:git:is-dirty"
+    zstyle "lambda17:26-dirty" fg "red"
+    zstyle "lambda17:05-sign" bold true
+    zstyle "lambda17:09-arrow" from 00-banner
+    zstyle "lambda17:09-arrow" transition ""
+    zstyle "lambda17:10-dir" bold true
+    zstyle "lambda17:20-git" left "⋯"
+    zstyle "lambda17:25-head" fg-detached "red"
+    zstyle "lambda17:25-head" fg-branch "green"
+    zstyle "lambda17:25-head" fg-tag "yellow"
+    zstyle "lambda17:90-command" min-width 1
+    zstyle "lambda17:91-return" sign "%{}"
+    zstyle "lambda17:91-return" condition "print -P '%?' | tee /dev/stderr | grep -Fvqx 0"
+    zstyle "lambda17:91-return" fg "red"
 
-    ## setting git info
-    #PROMPT="$PROMPT\$_lambda17_git_info "
-
-    #RPROMPT=''
     PROMPT="\${_lambda17_prompt}"
     RPROMPT=""
 }
 
-lambda17:get-option() {
-    zstyle -T "lambda17:blocks:$2" "$3" &&
-        zstyle -g "$1" "lambda17:blocks:$2" "$3"
+lambda17:option() {
+    if zstyle -m "lambda17:$1" "$2" "*"; then
+        zstyle -g "${3:-${2//-/_}}" "lambda17:$1" "$2"
+    fi
 }
 
-lambda17:set-option() {
-    zstyle "lambda17:blocks:$1" "$2" "${@:3:}"
+lambda17:block:panel() {
+    local id="$1"
+
+    local fg
+    local bg
+    local bold
+    local min_width
+    local left
+    local right
+
+    lambda17:option "$id" fg
+    lambda17:option "$id" bg
+    lambda17:option "$id" bold
+    lambda17:option "$id" min-width
+    lambda17:option "$id" left
+    lambda17:option "$id" right
+
+    printf "%s" "${fg:+"%F{$fg}"}"
+    printf "%s" "${bg:+"%K{$bg}"}"
+    printf "%s" "${bold:+"%B"}"
+
+    local panel
+    :lambda17:compile panel "$id"
+
+    if [[ "$min_width" ]]; then
+        local panel=$(print -P "$panel")
+        local visible=$(sed -r 's/\x1b\[[0-9;]*m//g' <<< "$panel")
+        local width=$(( $min_width + ${#panel} - ${#visible} ))
+
+        panel=$(printf "%${width}s" "$panel")
+    fi
+
+    printf "%s" "${panel:+$left}"
+    printf "%s" "${panel:+$right}"
+
+    printf "%s" "$panel"
+
+    printf "%s" "${fg:+"%f"}"
+    printf "%s" "${bg:+"%k"}"
+    printf "%s" "${bold:+"%b"}"
 }
 
-lambda17:blocks:sigils() {
-    local -a sigils
+lambda17:block:transition() {
+    local id="$1"
 
-    lambda17:get-option sigils 
+    local from
+    local to
+    local transition
+
+    lambda17:option "$id" from
+    lambda17:option "$id" to
+    lambda17:option "$id" transition
+
+    local from_bg
+
+    lambda17:option "$from" bg from_bg
+
+    local to_bg
+    local to_fg
+
+    lambda17:option "$to" bg to_bg
+    lambda17:option "$to" fg to_fg
+
+    printf "%s" "${from_bg:+"%F{$from_bg}"}"
+    printf "%s" "${to_bg:+"%K{$to_bg}"}"
+    printf "%s" "$transition"
+    printf "%s" "${from_bg:+"%f"}"
+}
+
+lambda17:block:sign() {
+    local id="$1"
+
+    local fg
+    local bold
+    local sign="☫"
+    local condition=true
+
+    lambda17:option "$id" fg
+    lambda17:option "$id" bold
+    lambda17:option "$id" sign
+    lambda17:option "$id" condition
+
+    print -P "%?" > /dev/stderr
+
+    eval $condition
+    if [[ "$?" -eq 0 ]]; then
+        printf "%s" "${fg:+"%F{$fg}"}"
+        printf "%s" "${bold:+"%B"}"
+        printf "%s" "$sign"
+        printf "%s" "${bold:+"%b"}"
+        printf "%s" "${fg:+"%f"}"
+    fi
+}
+
+lambda17:block:dir() {
+    local id="$1"
+
+    local format="%1/"
+
+    lambda17:option "$id" format
+
+    if [[ "$PWD" != "$HOME" ]]; then
+        printf "%s" "$format"
+    fi
+}
+
+lambda17:block:git:head() {
+    local id="$1"
+
+    local fg_detached
+    local fg_branch
+    local fg_tag
+
+    lambda17:option "$id" fg-detached
+    lambda17:option "$id" fg-branch
+    lambda17:option "$id" fg-tag
+
+    local name
+
+    lambda17:git:head name
+
+    if [[ ! "$name" ]]; then
+        return
+    fi
+
+    if [[ "$name" == "master" ]]; then
+        return
+    fi
+
+    if [[ "$name" == "HEAD" ]]; then
+        local ref
+
+        if lambda17:cached ref git describe --always 2>/dev/null; then
+            printf "%s" "${fg_detached:+"%F{$fg_detached}"}"
+        fi
+
+        [[ ! "$ref" ]] &&
+            if lambda17:cached ref git describe --tags 2>/dev/null; then
+                printf "%s" "${fg_tag:+"%F{$fg_tag}"}"
+            fi
+
+        printf "%s" "$ref"
+    else
+        printf "%s" "${fg_branch:+"%F{$fg_branch}"}"
+        printf "%s" "$name"
+    fi
+}
+
+lambda17:git:head() {
+    lambda17:cached "$1" git rev-parse --abbrev-ref HEAD 2>/dev/null
+}
+
+lambda17:git:status() {
+    if lambda17:git:head; then
+        lambda17:cached "$1" git status --porcelain
+    fi
+}
+
+lambda17:git:is-dirty() {
+    local output
+
+    if lambda17:git:head; then
+        lambda17:git:status output
+
+        [[ "$output" ]]
+    else
+        false
+    fi
+}
+
+lambda17:git:is-clean() {
+    local output
+
+    if lambda17:git:head; then
+        lambda17:git:status output
+
+        [[ ! "$output" ]]
+    else
+        false
+    fi
 }
 
 # prompt interface
 
 prompt_lambda17_help() lambda17:help
 
-lambda17:setup "$@"
+:lambda17:setup "$@"
