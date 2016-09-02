@@ -1,8 +1,10 @@
 typeset -g  _lambda17_prompt=''
 typeset -g  _lambda17_machine_id=''
+typeset -g  _lambda17_exit_code=0
 typeset -gA _lambda17_cache=()
 
 lambda17:update() {
+    _lambda17_exit_code=$(print -P "%?")
     _lambda17_prompt=""
     _lambda17_cache=()
 
@@ -15,26 +17,93 @@ lambda17:update() {
     local -a __blocks__
     zstyle -g __blocks__ "$__namespace__"
 
+    local __when__
     local __func__
     local __id__
     local __out__
     for __id__ in "${__blocks__[@]}"; do
         zstyle -s "$__namespace__" "$__id__" __func__
 
+        __when__=''
+
+        lambda17:option "$__id__" when __when__
+
+        if ! eval "$__when__"; then
+            continue
+        fi
+
         eval "$($__func__ "$__id__" > >(__out__=$(cat); typeset __out__) &&
             typeset -p _lambda17_cache | sed s/-A/-Ag/)"
-        eval "$1+=\$__out__"
+        eval "$(printf '%s+=$(:lambda17:stylish "$__id__" "$__out__")' "$1")"
     done
+}
+
+:lambda17:stylish() {
+    local id="$1"
+    local contents="$2"
+
+    local fg
+    local bg
+    local bold
+
+    lambda17:option "$id" fg
+    lambda17:option "$id" bg
+    lambda17:option "$id" bold
+
+    printf "%s" \
+        "${bg:+"%K{$bg}"}" \
+        "${fg:+"%F{$fg}"}" \
+        "${bold:+"%B"}" \
+        "$contents" \
+        "${bold:+"%b"}" \
+        "${fg:+"%f"}" \
+        "${bg:+"%k"}"
 }
 
 :lambda17:help() {
     cat <<-END
-	Prompt will display specified <letter> colored <fg_color> in space
-	padded box with background color <bg_color>.
+    Highly extensible color theme, vastly configure via zstyle.
 
-	<letter> by default is λ.
-	<fg_color> by default is white.
-	<bg_color> by default is red.
+    Prompt consists of blocks, which are defined by:
+
+        zstyle "lambda17" [name] [function]
+
+    [name] is a block name, which is used to determine blocks order.
+    [function] is a function, which output will be used as blocks
+    content.
+
+    Each block may have parameters which are configured via:
+
+        zstyle "lambda17:[name]" [parameter] [value]
+
+    Builtin block functions available:
+    * lambda17:dir;
+      - display last component of current dir, empty in home dir;
+
+    * lambda17:text;
+      - display text if when matches;
+
+        Parameters:
+        . text: value to display;
+        . when: evaluate shell command and display [text] only when
+          exit code is 0
+        . fg: use following foreground color;
+
+    * lambda17:panel;
+      - allows block nesting and grouping;
+
+        Nested blocks should be specified via:
+
+            zstyle "lambda17>[parent]" [name] [function]
+
+        Parameters:
+        . fg: use following foreground color;
+        . bg: use following background color;
+        . min-width: render panel at least that width, padded with spaces;
+          negative value means pad right instead of left;
+
+    * lambda17:transition;
+    * lambda17:git:head;
 
 	prompt lambda17 <fg_color> <bg_color> <letter>
 END
@@ -64,15 +133,16 @@ lambda17:cached() {
 }
 
 lambda17:color() {
-    local generation="${1:-0}"
+    local color="${1:-0}"
+    local scheme="${2:-0}"
 
     if [[ ! "$_lambda17_machine_id" ]]; then
         _lambda17_machine_id="$(systemd-machine-id-setup --print)"
     fi
 
     # based upon http://jimlund.org/blog/pics/colortest_iTerm.png
-    local lookback=$(( $generation * 3 ))
-    local seed=$(( 0x${_lambda17_machine_id:1:2} ))
+    local lookback=$(( ($color * 2) % (6 * 6) ))
+    local seed=$(( 0x${_lambda17_machine_id:1:2} + $scheme ))
     local base=$(( 16 + ($seed % (230 - 16)) ))
     local block=$(( ($base - 16) / 6 ))
     local index=$(( ($base - 16) % 6 ))
@@ -93,41 +163,68 @@ lambda17:color() {
 
     add-zsh-hook precmd lambda17:update
 
-    zstyle "lambda17" 00-banner lambda17:block:panel
-    zstyle "lambda17>00-banner" 05-sign lambda17:block:sign
-    zstyle "lambda17" 09-arrow lambda17:block:transition
-    zstyle "lambda17" 10-dir lambda17:block:panel
-    zstyle "lambda17>10-dir" 15-pwd lambda17:block:dir
-    zstyle "lambda17" 20-git lambda17:block:panel
-    zstyle "lambda17>20-git" 25-head lambda17:block:git:head
-    zstyle "lambda17" 26-clean lambda17:block:sign
-    zstyle "lambda17" 26-dirty lambda17:block:sign
-    zstyle "lambda17" 90-command lambda17:block:panel
-    zstyle "lambda17>90-command" 91-return lambda17:block:sign
+    zstyle "lambda17" 00-banner lambda17:panel
+    zstyle "lambda17>00-banner" 01-git-behind lambda17:text
+    zstyle "lambda17>00-banner" 01-git-ahead lambda17:text
+    zstyle "lambda17>00-banner" 01-git-rebase lambda17:text
+    zstyle "lambda17>00-banner" 01-dir-writable lambda17:text
+    zstyle "lambda17>00-banner" 05-sign lambda17:text
+    zstyle "lambda17" 09-arrow lambda17:transition
+    zstyle "lambda17" 10-dir lambda17:panel
+    zstyle "lambda17>10-dir" 15-pwd lambda17:text
+    zstyle "lambda17" 20-git lambda17:panel
+    zstyle "lambda17>20-git" 25-head lambda17:git-head
+    zstyle "lambda17" 26-git-clean lambda17:text
+    zstyle "lambda17" 26-git-dirty lambda17:text
+    zstyle "lambda17" 25-git-conflict lambda17:text
+    zstyle "lambda17" 90-command lambda17:panel
+    zstyle "lambda17>90-command" 91-exit-code lambda17:text
 
+    # cache machine identification
     lambda17:color >/dev/null
 
-    zstyle "lambda17:00-banner" bg "$(lambda17:color 0)"
-    zstyle "lambda17:00-banner" fg "$(lambda17:color 1)"
+    # new month - new theme
+    local colorscheme="$(date +%y%m)"
+
+    zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
+    zstyle "lambda17:00-banner" fg "$(lambda17:color 1 "$colorscheme")"
     zstyle "lambda17:00-banner" min-width 2
-    zstyle "lambda17:26-clean" sign "✓"
-    zstyle "lambda17:26-clean" condition "lambda17:git:is-clean"
-    zstyle "lambda17:26-clean" fg "green"
-    zstyle "lambda17:26-dirty" sign "✗"
-    zstyle "lambda17:26-dirty" condition "lambda17:git:is-dirty"
-    zstyle "lambda17:26-dirty" fg "red"
+    zstyle "lambda17:01-git-behind" text "↓"
+    zstyle "lambda17:01-git-behind" when "lambda17:git:is-behind"
+    zstyle "lambda17:01-git-ahead" text "↑"
+    zstyle "lambda17:01-git-ahead" when "lambda17:git:is-ahead"
+    zstyle "lambda17:01-git-rebase" text ""
+    zstyle "lambda17:01-git-rebase" when "lambda17:git:is-rebase"
+    zstyle "lambda17:01-dir-writable" text ""
+    zstyle "lambda17:01-dir-writable" fg "$(lambda17:color 2 "$colorscheme")"
+    zstyle "lambda17:01-dir-writable" when "[[ ! -w \$PWD ]]"
+    zstyle "lambda17:05-sign" text "λ"
+    zstyle "lambda17:05-sign" fg "$(lambda17:color 1 "$colorscheme")"
     zstyle "lambda17:05-sign" bold true
+    zstyle "lambda17:25-git-conflict" text "U"
+    zstyle "lambda17:25-git-conflict" when "lambda17:git:is-conflict"
+    zstyle "lambda17:25-git-conflict" fg "red"
+    zstyle "lambda17:25-git-conflict" bold "red"
+    zstyle "lambda17:26-git-clean" text "✓"
+    zstyle "lambda17:26-git-clean" when "lambda17:git:is-clean"
+    zstyle "lambda17:26-git-clean" fg "green"
+    zstyle "lambda17:26-git-dirty" text "✗"
+    zstyle "lambda17:26-git-dirty" when "lambda17:git:is-dirty"
+    zstyle "lambda17:26-git-dirty" fg "red"
     zstyle "lambda17:09-arrow" from 00-banner
     zstyle "lambda17:09-arrow" transition ""
     zstyle "lambda17:10-dir" bold true
+    zstyle "lambda17:15-pwd" text "%1/"
+    zstyle "lambda17:15-pwd" when '[[ "$PWD" != "$HOME" ]]'
     zstyle "lambda17:20-git" left "⋯"
+    zstyle "lambda17:25-head" when 'lambda17:git:head head && [[ "$head" != "master" ]]'
     zstyle "lambda17:25-head" fg-detached "red"
     zstyle "lambda17:25-head" fg-branch "green"
     zstyle "lambda17:25-head" fg-tag "yellow"
     zstyle "lambda17:90-command" min-width 1
-    zstyle "lambda17:91-return" sign "%{}"
-    zstyle "lambda17:91-return" condition "print -P '%?' | tee /dev/stderr | grep -Fvqx 0"
-    zstyle "lambda17:91-return" fg "red"
+    zstyle "lambda17:91-exit-code" text "·"
+    zstyle "lambda17:91-exit-code" when '[[ $_lambda17_exit_code -ne 0 ]]'
+    zstyle "lambda17:91-exit-code" fg "red"
 
     PROMPT="\${_lambda17_prompt}"
     RPROMPT=""
@@ -139,7 +236,7 @@ lambda17:option() {
     fi
 }
 
-lambda17:block:panel() {
+lambda17:panel() {
     local id="$1"
 
     local fg
@@ -149,39 +246,28 @@ lambda17:block:panel() {
     local left
     local right
 
-    lambda17:option "$id" fg
-    lambda17:option "$id" bg
-    lambda17:option "$id" bold
     lambda17:option "$id" min-width
     lambda17:option "$id" left
     lambda17:option "$id" right
-
-    printf "%s" "${fg:+"%F{$fg}"}"
-    printf "%s" "${bg:+"%K{$bg}"}"
-    printf "%s" "${bold:+"%B"}"
 
     local panel
     :lambda17:compile panel "$id"
 
     if [[ "$min_width" ]]; then
-        local panel=$(print -P "$panel")
-        local visible=$(sed -r 's/\x1b\[[0-9;]*m//g' <<< "$panel")
+        local visible=$(print -P "$panel" | sed -r 's/\x1b\[[0-9;]*m//g')
         local width=$(( $min_width + ${#panel} - ${#visible} ))
 
         panel=$(printf "%${width}s" "$panel")
     fi
 
     printf "%s" "${panel:+$left}"
-    printf "%s" "${panel:+$right}"
 
     printf "%s" "$panel"
 
-    printf "%s" "${fg:+"%f"}"
-    printf "%s" "${bg:+"%k"}"
-    printf "%s" "${bold:+"%b"}"
+    printf "%s" "${panel:+$right}"
 }
 
-lambda17:block:transition() {
+lambda17:transition() {
     local id="$1"
 
     local from
@@ -208,44 +294,29 @@ lambda17:block:transition() {
     printf "%s" "${from_bg:+"%f"}"
 }
 
-lambda17:block:sign() {
+lambda17:text() {
     local id="$1"
 
     local fg
     local bold
-    local sign="☫"
-    local condition=true
+    local text
+    local when=true
 
     lambda17:option "$id" fg
     lambda17:option "$id" bold
-    lambda17:option "$id" sign
-    lambda17:option "$id" condition
+    lambda17:option "$id" text
+    lambda17:option "$id" when
 
-    print -P "%?" > /dev/stderr
-
-    eval $condition
-    if [[ "$?" -eq 0 ]]; then
+    if eval $when; then
         printf "%s" "${fg:+"%F{$fg}"}"
         printf "%s" "${bold:+"%B"}"
-        printf "%s" "$sign"
+        printf "%s" "$text"
         printf "%s" "${bold:+"%b"}"
         printf "%s" "${fg:+"%f"}"
     fi
 }
 
-lambda17:block:dir() {
-    local id="$1"
-
-    local format="%1/"
-
-    lambda17:option "$id" format
-
-    if [[ "$PWD" != "$HOME" ]]; then
-        printf "%s" "$format"
-    fi
-}
-
-lambda17:block:git:head() {
+lambda17:git-head() {
     local id="$1"
 
     local fg_detached
@@ -261,10 +332,6 @@ lambda17:block:git:head() {
     lambda17:git:head name
 
     if [[ ! "$name" ]]; then
-        return
-    fi
-
-    if [[ "$name" == "master" ]]; then
         return
     fi
 
@@ -291,9 +358,15 @@ lambda17:git:head() {
     lambda17:cached "$1" git rev-parse --abbrev-ref HEAD 2>/dev/null
 }
 
+lambda17:git:root() {
+    lambda17:cached "$1" git rev-parse --show-toplevel 2>/dev/null
+}
+
 lambda17:git:status() {
     if lambda17:git:head; then
-        lambda17:cached "$1" git status --porcelain
+        lambda17:cached "$1" git status --porcelain -sb
+    else
+        return 1
     fi
 }
 
@@ -301,28 +374,72 @@ lambda17:git:is-dirty() {
     local output
 
     if lambda17:git:head; then
+        if lambda17:git:is-conflict; then
+            return 1
+        fi
+
         lambda17:git:status output
 
-        [[ "$output" ]]
+        [[ "${#${(ps:\n:)output}}" -gt 1 ]]
     else
-        false
+        return 1
     fi
 }
 
 lambda17:git:is-clean() {
     local output
 
-    if lambda17:git:head; then
-        lambda17:git:status output
-
-        [[ ! "$output" ]]
+    if lambda17:git:status output; then
+        [[ "${#${(f)output}}" -eq 1 ]]
     else
-        false
+        return 1
+    fi
+}
+
+lambda17:git:is-behind() {
+    local output
+
+    if lambda17:git:status output; then
+        [[ "${${(f)output}[1]}" =~ 'behind [1-9]' ]]
+    else
+        return 1
+    fi
+}
+
+lambda17:git:is-ahead() {
+    local output
+
+    if lambda17:git:status output; then
+        [[ "${${(f)output}[1]}" =~ 'ahead [1-9]' ]]
+    else
+        return 1
+    fi
+}
+
+lambda17:git:is-conflict() {
+    local output
+
+    if lambda17:git:status output; then
+        local conflicts=(${(f)output})
+
+        [[ "${(M)conflicts[@]:#UU *}" ]]
+    else
+        return 1
+    fi
+}
+
+lambda17:git:is-rebase() {
+    local root
+
+    if lambda17:git:root root; then
+        [[ -d "$root/.git/rebase-merge" || -d "$root/.git/rebase-apply" ]]
+    else
+        return 1
     fi
 }
 
 # prompt interface
 
-prompt_lambda17_help() lambda17:help
+prompt_lambda17_help() :lambda17:help
 
 :lambda17:setup "$@"
