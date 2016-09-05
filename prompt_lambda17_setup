@@ -11,58 +11,9 @@ lambda17:update() {
     :lambda17:compile _lambda17_prompt
 }
 
-:lambda17:compile() {
-    local __namespace__="lambda17${(jjj)${@:2}[@]/#/>}"
-
-    local -a __blocks__
-    zstyle -g __blocks__ "$__namespace__"
-
-    local __when__
-    local __func__
-    local __id__
-    local __out__
-    for __id__ in "${__blocks__[@]}"; do
-        zstyle -s "$__namespace__" "$__id__" __func__
-
-        __when__=''
-
-        lambda17:option "$__id__" when __when__
-
-        if ! eval "$__when__"; then
-            continue
-        fi
-
-        eval "$($__func__ "$__id__" > >(__out__=$(cat); typeset __out__) &&
-            typeset -p _lambda17_cache | sed s/-A/-Ag/)"
-        eval "$(printf '%s+=$(:lambda17:stylish "$__id__" "$__out__")' "$1")"
-    done
-}
-
-:lambda17:stylish() {
-    local id="$1"
-    local contents="$2"
-
-    local fg
-    local bg
-    local bold
-
-    lambda17:option "$id" fg
-    lambda17:option "$id" bg
-    lambda17:option "$id" bold
-
-    printf "%s" \
-        "${bg:+"%K{$bg}"}" \
-        "${fg:+"%F{$fg}"}" \
-        "${bold:+"%B"}" \
-        "$contents" \
-        "${bold:+"%b"}" \
-        "${fg:+"%f"}" \
-        "${bg:+"%k"}"
-}
-
-:lambda17:help() {
+lambda17:help() {
     cat <<-END
-    Highly extensible color theme, vastly configure via zstyle.
+Highly extensible color theme, vastly configure via zstyle.
 
     Prompt consists of blocks, which are defined by:
 
@@ -76,18 +27,22 @@ lambda17:update() {
 
         zstyle "lambda17:[name]" [parameter] [value]
 
+    Every block has following builtin parameters:
+    * fg: use following foreground color;
+    * bg: use following background color;
+    * bold: use bold font style;
+    * when: evaluate shell command and display [text] only when
+      exit code is 0;
+
     Builtin block functions available:
     * lambda17:dir;
-      - display last component of current dir, empty in home dir;
+      - display last component of current dir;
 
     * lambda17:text;
-      - display text if when matches;
+      - display provided text.
 
         Parameters:
         . text: value to display;
-        . when: evaluate shell command and display [text] only when
-          exit code is 0
-        . fg: use following foreground color;
 
     * lambda17:panel;
       - allows block nesting and grouping;
@@ -97,15 +52,42 @@ lambda17:update() {
             zstyle "lambda17>[parent]" [name] [function]
 
         Parameters:
-        . fg: use following foreground color;
-        . bg: use following background color;
         . min-width: render panel at least that width, padded with spaces;
           negative value means pad right instead of left;
+        . left: display provided text as left separator, if panel contents
+          is not empty;
+        . right: display provided text as right separator, if panel contents
+          is not empty;
 
     * lambda17:transition;
-    * lambda17:git:head;
+      - display transition from one block to another, practically, renders
+      provided text in fg color same as previous block bg and with bg color
+      same as bg of next block;
 
-	prompt lambda17 <fg_color> <bg_color> <letter>
+        Parameters:
+        . from: [name] of previous block;
+        . to: [name] of following block;
+        . transition: text to display as transition character;
+
+    * lambda17:git-head;
+      - display current git HEAD info, branch, tag or detached state;
+
+      Parameters:
+      . fg-detached: fg color for commmit ref when HEAD is detached;
+      . fg-tag: fg color for tag HEAD;
+      . fg-branch: fg color when current HEAD is at branch;
+
+-------------------------------------------------------------------------
+
+Current configuration follows.
+
+Prompt will consists of following blocks:
+
+$({ zstyle -L 'lambda17'; zstyle -L 'lambda17>*'; } | sed 's/^/    /g')
+
+Configuration for blocks:
+
+$(zstyle -L 'lambda17:*' | sed 's/^/    /g')
 END
 }
 
@@ -239,9 +221,6 @@ lambda17:option() {
 lambda17:panel() {
     local id="$1"
 
-    local fg
-    local bg
-    local bold
     local min_width
     local left
     local right
@@ -260,11 +239,10 @@ lambda17:panel() {
         panel=$(printf "%${width}s" "$panel")
     fi
 
-    printf "%s" "${panel:+$left}"
-
-    printf "%s" "$panel"
-
-    printf "%s" "${panel:+$right}"
+    lambda17:printf "%s" \
+        "${panel:+$left}" \
+        "$panel" \
+        "${panel:+$right}"
 }
 
 lambda17:transition() {
@@ -288,32 +266,21 @@ lambda17:transition() {
     lambda17:option "$to" bg to_bg
     lambda17:option "$to" fg to_fg
 
-    printf "%s" "${from_bg:+"%F{$from_bg}"}"
-    printf "%s" "${to_bg:+"%K{$to_bg}"}"
-    printf "%s" "$transition"
-    printf "%s" "${from_bg:+"%f"}"
+    lambda17:printf "%s" \
+        "${from_bg:+"%F{$from_bg}"}" \
+        "${to_bg:+"%K{$to_bg}"}" \
+        "$transition" \
+        "${from_bg:+"%f"}"
 }
 
 lambda17:text() {
     local id="$1"
 
-    local fg
-    local bold
     local text
-    local when=true
 
-    lambda17:option "$id" fg
-    lambda17:option "$id" bold
     lambda17:option "$id" text
-    lambda17:option "$id" when
 
-    if eval $when; then
-        printf "%s" "${fg:+"%F{$fg}"}"
-        printf "%s" "${bold:+"%B"}"
-        printf "%s" "$text"
-        printf "%s" "${bold:+"%b"}"
-        printf "%s" "${fg:+"%f"}"
-    fi
+    lambda17:printf "%s" "$text"
 }
 
 lambda17:git-head() {
@@ -339,18 +306,18 @@ lambda17:git-head() {
         local ref
 
         if lambda17:cached ref git describe --always 2>/dev/null; then
-            printf "%s" "${fg_detached:+"%F{$fg_detached}"}"
+            lambda17:printf "%s" "${fg_detached:+"%F{$fg_detached}"}"
         fi
 
         [[ ! "$ref" ]] &&
             if lambda17:cached ref git describe --tags 2>/dev/null; then
-                printf "%s" "${fg_tag:+"%F{$fg_tag}"}"
+                lambda17:printf "%s" "${fg_tag:+"%F{$fg_tag}"}"
             fi
 
-        printf "%s" "$ref"
+        lambda17:printf "%s" "$ref"
     else
-        printf "%s" "${fg_branch:+"%F{$fg_branch}"}"
-        printf "%s" "$name"
+        lambda17:printf "%s" "${fg_branch:+"%F{$fg_branch}"}"
+        lambda17:printf "%s" "$name"
     fi
 }
 
@@ -380,7 +347,9 @@ lambda17:git:is-dirty() {
 
         lambda17:git:status output
 
-        [[ "${#${(ps:\n:)output}}" -gt 1 ]]
+        local lines=("${(f)output}")
+
+        [[ "${#lines[@]}" -gt 1 ]]
     else
         return 1
     fi
@@ -390,7 +359,9 @@ lambda17:git:is-clean() {
     local output
 
     if lambda17:git:status output; then
-        [[ "${#${(f)output}}" -eq 1 ]]
+        local lines=("${(f)output}")
+
+        [[ "${#lines[@]}" -eq 1 ]]
     else
         return 1
     fi
@@ -400,7 +371,9 @@ lambda17:git:is-behind() {
     local output
 
     if lambda17:git:status output; then
-        [[ "${${(f)output}[1]}" =~ 'behind [1-9]' ]]
+        local lines=("${(f)output}")
+
+        [[ "${lines[1]}" =~ 'behind [1-9]' ]]
     else
         return 1
     fi
@@ -410,7 +383,9 @@ lambda17:git:is-ahead() {
     local output
 
     if lambda17:git:status output; then
-        [[ "${${(f)output}[1]}" =~ 'ahead [1-9]' ]]
+        local lines=("${(f)output}")
+
+        [[ "${lines[1]}" =~ 'ahead [1-9]' ]]
     else
         return 1
     fi
@@ -438,8 +413,65 @@ lambda17:git:is-rebase() {
     fi
 }
 
+lambda17:printf() {
+    __out__+=$(builtin printf "${@}")
+}
+
+:lambda17:compile() {
+    local __namespace__="lambda17${(jjj)${@:2}[@]/#/>}"
+
+    local -a __blocks__
+    zstyle -g __blocks__ "$__namespace__"
+
+    local __when__
+    local __func__
+    local __id__
+    local __out__
+
+    for __id__ in "${__blocks__[@]}"; do
+        zstyle -s "$__namespace__" "$__id__" __func__
+
+        __when__=''
+
+        lambda17:option "$__id__" when __when__
+
+        if ! eval "$__when__"; then
+            continue
+        fi
+
+        :lambda17:stylish "$__func__" "$__id__"
+    done
+
+    eval "$1=\$__out__"
+}
+
+:lambda17:stylish() {
+    local func="$1"
+    local id="$2"
+
+    local fg
+    local bg
+    local bold
+
+    lambda17:option "$id" fg
+    lambda17:option "$id" bg
+    lambda17:option "$id" bold
+
+    lambda17:printf "%s" \
+        "${bg:+"%K{$bg}"}" \
+        "${fg:+"%F{$fg}"}" \
+        "${bold:+"%B"}" \
+
+    "$func" "$id"
+
+    lambda17:printf "%s" \
+        "${bold:+"%b"}" \
+        "${fg:+"%f"}" \
+        "${bg:+"%k"}"
+}
+
 # prompt interface
 
-prompt_lambda17_help() :lambda17:help
+prompt_lambda17_help() lambda17:help
 
 :lambda17:setup "$@"
