@@ -34,6 +34,20 @@ Highly extensible color theme, vastly configure via zstyle.
     * when: evaluate shell command and display [text] only when
       exit code is 0;
 
+    To write custom block, you must define function, which will populate
+    block using `lambda17:printf` function with same semantics, as builtin
+    printf. Then, new block should be declared via `zstyle`:
+
+        function my-block() {
+            lambda17:printf ' [%s]' "$(uptime -p)"
+        }
+
+        zstyle 'lambda17' 99-my-block my-block
+
+    To replace default block, you need to delete it's declaration via:
+
+        zstyle -d 'lambda17>[block]'
+
     Builtin block functions available:
     * lambda17:dir;
       - display last component of current dir;
