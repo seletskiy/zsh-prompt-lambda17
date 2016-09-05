@@ -35,11 +35,11 @@ Highly extensible color theme, vastly configure via zstyle.
       exit code is 0;
 
     To write custom block, you must define function, which will populate
-    block using `lambda17:printf` function with same semantics, as builtin
-    printf. Then, new block should be declared via `zstyle`:
+    block using 'lambda17:printf' function with same semantics, as builtin
+    'printf'. Then, new block should be declared via 'zstyle':
 
         function my-block() {
-            lambda17:printf ' [%s]' "$(uptime -p)"
+            lambda17:printf ' [%s]' "\$(uptime -p)"
         }
 
         zstyle 'lambda17' 99-my-block my-block
