@@ -213,10 +213,12 @@ lambda17:color() {
     zstyle "lambda17:15-pwd" text "%1/"
     zstyle "lambda17:15-pwd" when '[[ "$PWD" != "$HOME" ]]'
     zstyle "lambda17:20-git" left "⋯"
-    zstyle "lambda17:25-head" when 'lambda17:git:head head && [[ "$head" != "master" ]]'
+    zstyle "lambda17:25-head" when 'lambda17:git:head h; [[ "$h" != "master" ]]'
     zstyle "lambda17:25-head" fg-detached "red"
     zstyle "lambda17:25-head" fg-branch "green"
     zstyle "lambda17:25-head" fg-tag "yellow"
+    zstyle "lambda17:25-head" fg-empty "blue"
+    zstyle "lambda17:25-head" text-empty "∅"
     zstyle "lambda17:90-command" min-width 1
     zstyle "lambda17:91-exit-code" text "·"
     zstyle "lambda17:91-exit-code" when '[[ $_lambda17_exit_code -ne 0 ]]'
@@ -303,10 +305,14 @@ lambda17:git-head() {
     local fg_detached
     local fg_branch
     local fg_tag
+    local fg_empty
+    local text_empty
 
     lambda17:option "$id" fg-detached
     lambda17:option "$id" fg-branch
     lambda17:option "$id" fg-tag
+    lambda17:option "$id" fg-empty
+    lambda17:option "$id" text-empty
 
     local name
 
@@ -323,10 +329,16 @@ lambda17:git-head() {
             lambda17:printf "%s" "${fg_detached:+"%F{$fg_detached}"}"
         fi
 
-        [[ ! "$ref" ]] &&
+        if [[ ! "$ref" ]]; then
             if lambda17:cached ref git describe --tags 2>/dev/null; then
                 lambda17:printf "%s" "${fg_tag:+"%F{$fg_tag}"}"
             fi
+        fi
+
+        if [[ ! "$ref" ]]; then
+            ref="$text_empty"
+            lambda17:printf "%s" "${fg_empty:+"%F{$fg_empty}"}"
+        fi
 
         lambda17:printf "%s" "$ref"
     else
