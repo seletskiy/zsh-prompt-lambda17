@@ -108,14 +108,13 @@ END
 lambda17:cached() {
     local __key__="${@:2}"
     local __cached__=${_lambda17_cache["$__key__"]}
+    local __null__
 
     if [[ "$__cached__" ]]; then
-        eval "$(printf '%s=${__cached__#* }' "$1")"
+        eval "$(printf '%s=${__cached__#* }' "${1:-__null__}")"
 
         return "${__cached__%% *}"
     else
-        local __null__
-
         eval "$(
             printf '%s=$(eval "${@:2}")' "${1:-__null__}"
         )"
