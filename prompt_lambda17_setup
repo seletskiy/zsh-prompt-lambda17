@@ -336,12 +336,12 @@ lambda17:git-head() {
 
         if [[ ! "$ref" ]]; then
             ref="$text_empty"
-            lambda17:printf "%s" "${fg_empty:+"%F{$fg_empty}}"}"
+            lambda17:printf "%s" "${fg_empty:+"%F{$fg_empty}"}"
         fi
 
         lambda17:printf "%s" "$ref"
     else
-        lambda17:printf "%s" "${fg_branch:+"%F{$fg_branch}}"}"
+        lambda17:printf "%s" "${fg_branch:+"%F{$fg_branch}"}"
         lambda17:printf "%s" "$name"
     fi
 }
