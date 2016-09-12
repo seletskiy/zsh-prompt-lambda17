@@ -321,29 +321,30 @@ lambda17:git-head() {
         return
     fi
 
-    if [[ "$name" == "HEAD" ]]; then
-        local ref
+    local ref=$name
+    local fg=$fg_branch
 
+    if [[ "$name" == "HEAD" ]]; then
         if lambda17:cached ref git describe --always 2>/dev/null; then
-            lambda17:printf "%s" "${fg_detached:+"%F{$fg_detached}"}"
+            fg=$fg_detached
         fi
 
         if [[ ! "$ref" ]]; then
             if lambda17:cached ref git describe --tags 2>/dev/null; then
-                lambda17:printf "%s" "${fg_tag:+"%F{$fg_tag}"}"
+                fg=$fg_tag
             fi
         fi
 
         if [[ ! "$ref" ]]; then
             ref="$text_empty"
-            lambda17:printf "%s" "${fg_empty:+"%F{$fg_empty}"}"
-        fi
 
-        lambda17:printf "%s" "$ref"
-    else
-        lambda17:printf "%s" "${fg_branch:+"%F{$fg_branch}"}"
-        lambda17:printf "%s" "$name"
+            fg=$fg_empty
+        fi
     fi
+
+    lambda17:printf "%s" "${fg:+"%F{$fg}"}"
+    lambda17:printf "%s" "$ref"
+    lambda17:printf "%s" "${fg:+"%f"}"
 }
 
 lambda17:git:head() {
