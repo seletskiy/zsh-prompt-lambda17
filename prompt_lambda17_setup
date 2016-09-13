@@ -2,13 +2,17 @@ typeset -g  _lambda17_prompt=''
 typeset -g  _lambda17_machine_id=''
 typeset -g  _lambda17_exit_code=0
 typeset -gA _lambda17_cache=()
+typeset -gA _lambda17_data=()
 
 lambda17:update() {
     _lambda17_exit_code=$(print -P "%?")
     _lambda17_prompt=""
     _lambda17_cache=()
 
-    :lambda17:compile _lambda17_prompt
+    :lambda17:compile _lambda17_prompt lambda17
+
+    # remove inline markers like '%<transition>'
+    _lambda17_prompt=${(S)_lambda17_prompt//\%<*>/}
 }
 
 lambda17:help() {
@@ -33,6 +37,7 @@ Highly extensible color theme, vastly configure via zstyle.
     * bold: use bold font style;
     * when: evaluate shell command and display [text] only when
       exit code is 0;
+    * transform: function to transform rendered block contents;
 
     To write custom block, you must define function, which will populate
     block using 'lambda17:printf' function with same semantics, as builtin
@@ -158,22 +163,24 @@ lambda17:color() {
 
     add-zsh-hook precmd lambda17:update
 
-    zstyle "lambda17" 00-banner lambda17:panel
-    zstyle "lambda17>00-banner" 01-git-behind lambda17:text
-    zstyle "lambda17>00-banner" 01-git-ahead lambda17:text
-    zstyle "lambda17>00-banner" 01-git-rebase lambda17:text
-    zstyle "lambda17>00-banner" 01-dir-writable lambda17:text
-    zstyle "lambda17>00-banner" 05-sign lambda17:text
-    zstyle "lambda17" 09-arrow lambda17:transition
-    zstyle "lambda17" 10-dir lambda17:panel
-    zstyle "lambda17>10-dir" 15-pwd lambda17:text
-    zstyle "lambda17" 20-git lambda17:panel
-    zstyle "lambda17>20-git" 25-head lambda17:git-head
-    zstyle "lambda17" 26-git-clean lambda17:text
-    zstyle "lambda17" 26-git-dirty lambda17:text
-    zstyle "lambda17" 25-git-conflict lambda17:text
-    zstyle "lambda17" 90-command lambda17:panel
-    zstyle "lambda17>90-command" 91-exit-code lambda17:text
+    zstyle "lambda17" 00-root lambda17:panel
+    zstyle "lambda17>00-root" 00-location lambda17:panel
+    zstyle "lambda17>00-root>00-location" 00-banner lambda17:panel
+    zstyle "lambda17>00-root>00-location>00-banner" 01-git-behind lambda17:text
+    zstyle "lambda17>00-root>00-location>00-banner" 01-git-ahead lambda17:text
+    zstyle "lambda17>00-root>00-location>00-banner" 01-git-rebase lambda17:text
+    zstyle "lambda17>00-root>00-location>00-banner" 01-dir-writable lambda17:text
+    zstyle "lambda17>00-root>00-location>00-banner" 05-sign lambda17:text
+    zstyle "lambda17>00-root>00-location" 09-arrow lambda17:transition
+    zstyle "lambda17>00-root>00-location" 10-dir lambda17:panel
+    zstyle "lambda17>00-root>00-location>10-dir" 15-pwd lambda17:text
+    zstyle "lambda17>00-root" 20-git lambda17:panel
+    zstyle "lambda17>00-root>20-git" 25-head lambda17:git-head
+    zstyle "lambda17>00-root>20-git" 26-git-clean lambda17:text
+    zstyle "lambda17>00-root>20-git" 26-git-dirty lambda17:text
+    zstyle "lambda17>00-root>20-git" 25-git-conflict lambda17:text
+    zstyle "lambda17>00-root" 90-command lambda17:panel
+    zstyle "lambda17>00-root>90-command" 91-exit-code lambda17:text
 
     # cache machine identification
     lambda17:color >/dev/null
@@ -181,6 +188,12 @@ lambda17:color() {
     # new month - new theme
     local colorscheme="$(date +%y%m)"
 
+    zstyle "lambda17:00-root" transform :lambda17:transform:conceal
+    zstyle "lambda17:00-root:conceal" char "%B›%b"
+    zstyle "lambda17:00-root:conceal" weak on
+    zstyle "lambda17:00-location" transform :lambda17:transform:conceal
+    zstyle "lambda17:00-location" fg "238"
+    zstyle "lambda17:00-location" bg "236"
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
     zstyle "lambda17:00-banner" fg "$(lambda17:color 1 "$colorscheme")"
     zstyle "lambda17:00-banner" min-width 2
@@ -211,7 +224,9 @@ lambda17:color() {
     zstyle "lambda17:10-dir" bold true
     zstyle "lambda17:15-pwd" text "%1/"
     zstyle "lambda17:15-pwd" when '[[ "$PWD" != "$HOME" ]]'
+    zstyle "lambda17:20-git" transform :lambda17:transform:conceal
     zstyle "lambda17:20-git" left "⋯"
+    zstyle "lambda17:20-git" fg "242"
     zstyle "lambda17:25-head" when 'lambda17:git:head h; [[ "$h" != "master" ]]'
     zstyle "lambda17:25-head" fg-detached "red"
     zstyle "lambda17:25-head" fg-branch "green"
@@ -219,6 +234,7 @@ lambda17:color() {
     zstyle "lambda17:25-head" fg-empty "blue"
     zstyle "lambda17:25-head" text-empty "∅"
     zstyle "lambda17:90-command" min-width 1
+    zstyle "lambda17:90-command" left "%<end>"
     zstyle "lambda17:91-exit-code" text "·"
     zstyle "lambda17:91-exit-code" when '[[ $_lambda17_exit_code -ne 0 ]]'
     zstyle "lambda17:91-exit-code" fg "red"
@@ -235,6 +251,7 @@ lambda17:option() {
 
 lambda17:panel() {
     local id="$1"
+    local namespace=("${@:2}")
 
     local min_width
     local left
@@ -245,10 +262,10 @@ lambda17:panel() {
     lambda17:option "$id" right
 
     local panel
-    :lambda17:compile panel "$id"
+    :lambda17:compile panel "${namespace[@]}" "$id"
 
     if [[ "$min_width" ]]; then
-        local visible=$(print -P "$panel" | sed -r 's/\x1b\[[0-9;]*m//g')
+        local visible="$(:lambda17:printable "$(print -P "${panel//\%</\\%<}")")"
         local width=$(( $min_width + ${#panel} - ${#visible} ))
 
         panel=$(printf "%${width}s" "$panel")
@@ -282,8 +299,8 @@ lambda17:transition() {
     lambda17:option "$to" fg to_fg
 
     lambda17:printf "%s" \
-        "${from_bg:+"%F{$from_bg}"}" \
-        "${to_bg:+"%K{$to_bg}"}" \
+        "${from_bg:+"%<transition>%F{$from_bg}"}" \
+        "${to_bg:+"%<transition>%K{$to_bg}"}" \
         "$transition" \
         "${from_bg:+"%f"}"
 }
@@ -444,56 +461,110 @@ lambda17:printf() {
 }
 
 :lambda17:compile() {
-    local __namespace__="lambda17${(jjj)${@:2}[@]/#/>}"
+    local __namespace__="${(j:>:)${@:2}[@]}"
 
     local -a __blocks__
     zstyle -g __blocks__ "$__namespace__"
 
     local __when__
+    local __transform__
     local __func__
     local __id__
     local __out__
+    local __buffer__
+    local __result__
 
     for __id__ in "${__blocks__[@]}"; do
         zstyle -s "$__namespace__" "$__id__" __func__
 
         __when__=''
+        __transform__=''
 
         lambda17:option "$__id__" when __when__
+        lambda17:option "$__id__" transform __transform__
 
         if ! eval "$__when__"; then
             continue
         fi
 
-        :lambda17:stylish "$__func__" "$__id__"
+        __out__=''
+
+        :lambda17:stylish "$__func__" "$__id__" "${@:2}"
+
+        if [[ "$__transform__" ]]; then
+            __buffer__="$__out__"
+            __out__=''
+
+            eval -- "$__transform__" "$__id__" "${@:2}" <<< "$__buffer__"
+        fi
+
+        __result__="$__result__$__out__"
     done
 
-    eval "$1=\$__out__"
+    eval "$1=\${__result__}"
 }
 
 :lambda17:stylish() {
-    local func="$1"
-    local id="$2"
-
     local fg
     local bg
     local bold
 
-    lambda17:option "$id" fg
-    lambda17:option "$id" bg
-    lambda17:option "$id" bold
+    lambda17:option "$2" fg
+    lambda17:option "$2" bg
+    lambda17:option "$2" bold
 
     lambda17:printf "%s" \
         "${bg:+"%K{$bg}"}" \
         "${fg:+"%F{$fg}"}" \
         "${bold:+"%B"}" \
 
-    "$func" "$id"
+    "${@}"
 
+    # using '\e[22m' because zsh '%b' will send '\e[0m'
     lambda17:printf "%s" \
-        "${bold:+"%b"}" \
+        "${bold:+$(echo -e "%{\e[22m%}")}" \
         "${fg:+"%f"}" \
         "${bg:+"%k"}"
+}
+
+:lambda17:printable() {
+    printf "%s" "$1" | sed -r 's/\x1b\[[0-9;]*m//g'
+}
+
+:lambda17:transform:conceal() {
+    local id="$1"
+    local namespace=("${@:2}")
+    local prompt="$(cat)"
+    local compiled="$(print -P "${(S)prompt//\%<*>}")"
+    local fg
+    local bg
+    local char
+    local weak
+
+    lambda17:option "$id" fg
+    lambda17:option "$id" bg
+
+    lambda17:option "${id}:conceal" char
+    lambda17:option "${id}:conceal" weak
+
+    if [[ "$weak" ]]; then
+        compiled="$(:lambda17:printable "$compiled")"
+    fi
+
+    if [[ "${_lambda17_data[$id]}" = "$compiled" ]]; then
+        prompt=${${fg:+${(S)prompt//\%f/%F\{$fg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\%F{*}/%F\{$fg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\%K{*}/%K\{$bg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\%<transition>\%F{*}/%F\{$bg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\%<transition>\%K{*}/%K\{$fg\}}}:-$prompt}
+        prompt=${${char:+${(S)prompt//\%<end> /%f$char}}:-$prompt}
+
+        lambda17:printf '%s' "$prompt"
+    else
+        lambda17:printf '%s' "$prompt"
+    fi
+
+    _lambda17_data[$id]="$compiled"
 }
 
 # prompt interface
