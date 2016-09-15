@@ -730,11 +730,20 @@ lambda17:transform:conceal() {
         printf '\033]'${2:-11}';'${3:+$3;}'?\007\033\\'
     } > /dev/tty
 
-    while [[ ! "$answer" ]]; do
+    local tries=50
+    while [[ ! "$answer" && "$tries" > 0 ]]; do
+        sleep 0.01
+
         read -r answer
+
+        tries=$(( tries - 1 ))
     done
 
     stty "$stty"
+
+    if [[ ! "$answer" ]]; then
+        return
+    fi
 
     answer="$(
         sed -r 's|.*rgba?:(..)../(..)../(..)...*|\1:\2:\3|' <<< "$answer"
