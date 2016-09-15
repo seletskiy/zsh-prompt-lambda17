@@ -770,6 +770,11 @@ lambda17:transform:conceal() {
     printf "%d" "$n"
 }
 
+add-zsh-hook precmd :lambda17:responsible-prompt
+
+:lambda17:responsible-prompt() {
+    printf '%s' "$(print -P "${(S)_lambda17_prompt//&<*>/}")"
+}
 
 prompt_lambda17_help() lambda17:help
 
