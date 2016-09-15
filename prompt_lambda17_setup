@@ -213,7 +213,7 @@ lambda17:color() {
     zstyle "lambda17:00-main::conceal:override" ribbon "─"
     zstyle "lambda17:00-main::conceal:override" format \
         ' ${${${${PWD#$HOME}:-~}##*/}:-/} ${padding}›'
-    zstyle ":lambda17:00-main::conceal:override" allow-empty false
+    zstyle "lambda17:00-main::conceal:override" allow-empty false
     zstyle "lambda17:00-status" transform lambda17:transform:conceal
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
     zstyle "lambda17:00-banner" fg "$(lambda17:color 1 "$colorscheme")"
