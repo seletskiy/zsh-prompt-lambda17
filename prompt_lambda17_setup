@@ -730,10 +730,9 @@ lambda17:transform:conceal() {
         printf '\033]'${2:-11}';'${3:+$3;}'?\007\033\\'
     } > /dev/tty
 
-    # sleep is required to obtain answer from terminal
-    sleep 0.001
-
-    read -r answer
+    while [[ ! "$answer" ]]; do
+        read -r answer
+    done
 
     stty "$stty"
 
