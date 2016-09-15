@@ -484,7 +484,7 @@ lambda17:clock() {
 
     local hour
 
-    lambda17:cached hour print -P '%D{%l}'
+    lambda17:cached hour print -P '%D\{%l\}'
     if [[ "${_lambda17_data["clock:$id"]}" ]]; then
         if [[ "${_lambda17_data["clock:$id"]}" != "$hour" ]]; then
             lambda17:printf "%s" "${faces:$(( $hour - 1 )):1}"
