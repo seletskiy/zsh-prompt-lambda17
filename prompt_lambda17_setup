@@ -201,7 +201,7 @@ lambda17:color() {
     zstyle "lambda17:00-root" transform lambda17:transform:replace
     zstyle "lambda17:00-root::replace" match "&<conceal>"
     zstyle "lambda17:00-root::replace" from "&<end> "
-    zstyle "lambda17:00-root::replace" to "%f%B›%b"
+    zstyle "lambda17:00-root::replace" to "%F{92}%B›%b%f"
     zstyle "lambda17:00-main" fg "$(( $terminal_bg + 2 * $color_gravity ))"
     zstyle "lambda17:00-main" bg "$(( $terminal_bg + 1 * $color_gravity ))"
     zstyle "lambda17:00-main" transform lambda17:transform:conceal
@@ -212,7 +212,7 @@ lambda17:color() {
     zstyle "lambda17:00-main::conceal:override" bold true
     zstyle "lambda17:00-main::conceal:override" ribbon "─"
     zstyle "lambda17:00-main::conceal:override" format \
-        ' ${${${${PWD#$HOME}:-~}##*/}:-/} %T ${padding}›'
+        ' %T ${${${${PWD#$HOME}:-~}##*/}:-/} ${padding}%k%F{92}›%f'
     zstyle "lambda17:00-main::conceal:override" allow-empty false
     zstyle "lambda17:00-status" transform lambda17:transform:conceal
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
@@ -779,3 +779,5 @@ add-zsh-hook precmd :lambda17:responsible-prompt
 prompt_lambda17_help() lambda17:help
 
 :lambda17:setup "$@"
+
+# vim: ft=zsh
