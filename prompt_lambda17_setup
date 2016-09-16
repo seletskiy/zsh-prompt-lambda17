@@ -5,15 +5,12 @@ typeset -gA _lambda17_cache=()
 typeset -gA _lambda17_data=()
 
 lambda17:update() {
+    :lambda17:print-prompt
+
     _lambda17_exit_code=$(print -P "%?")
     _lambda17_cache=()
 
-    if ! ${_lambda17_data["conceal:empty"]:-false}; then
-        _lambda17_prompt=""
-        :lambda17:compile _lambda17_prompt lambda17
-    fi
-
-    PROMPT="${(S)_lambda17_prompt//\&<*>/}"
+    :lambda17:set-prompt
 }
 
 lambda17:help() {
@@ -163,6 +160,10 @@ lambda17:color() {
     autoload -Uz add-zsh-hook
 
     add-zsh-hook precmd lambda17:update
+
+
+    :lambda17:bind-widget ":conceal:clear" clear-screen \
+        :lambda17:transform:conceal:clear
 
     zstyle "lambda17" 00-root lambda17:panel
     zstyle "lambda17>00-root" 00-main lambda17:panel
@@ -493,8 +494,85 @@ lambda17:clock() {
     _lambda17_data["clock:$id"]="$hour"
 }
 
+lambda17:transform:replace() {
+    local id="$1"
+    local prompt="$2"
+    local namespace=("${@:3}")
+    local match
+    local from
+    local to
+
+    lambda17:option "$id::replace" match
+    lambda17:option "$id::replace" from
+    lambda17:option "$id::replace" to
+
+    if [[ ! "$match" || "$prompt" =~ "$match" ]]; then
+        prompt=${(S)prompt//$from/$to}
+    fi
+
+    lambda17:print "$prompt"
+}
+
+lambda17:transform:conceal() {
+    local id="$1"
+    local prompt="$2"
+    local namespace=("${@:3}")
+    local compiled="$(print -P "$prompt")"
+    local fg
+    local bg
+    local weak
+    local ribbon
+
+    local -a wrap
+
+    lambda17:option "$id" fg
+    lambda17:option "$id" bg
+
+    lambda17:option "${id}::conceal" weak
+    lambda17:option "${id}::conceal" wrap
+    lambda17:option "${id}::conceal:override" ribbon
+
+    :lambda17:bind-widget "$1" clear-screen \
+        :lambda17:transform:conceal:reset
+
+    if [[ "$ribbon" ]]; then
+        :lambda17:bind-widget "$id" zle-line-finish \
+            :lambda17:transform:conceal:override
+    fi
+
+    if [[ "$weak" ]]; then
+        compiled="$(:lambda17:printable "$compiled")"
+    fi
+
+    if [[ "${_lambda17_data["conceal:prev:$id"]}" = "$compiled" ]]; then
+        prompt=${${fg:+${(S)prompt//\%f/%F\{$fg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\%F{*}/%F\{$fg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\%K{*}/%K\{$bg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\&<transition>\%F{*}/%F\{$bg\}}}:-$prompt}
+        prompt=${${fg:+${(S)prompt//\&<transition>\%K{*}/%K\{$fg\}}}:-$prompt}
+        prompt=${${wrap:+${wrap[1]}$prompt${wrap[2]}}:-$prompt}
+        prompt="${prompt}%f%b%k"
+    fi
+
+    lambda17:print "$prompt"
+
+    _lambda17_data["conceal:prev:$id"]="$compiled"
+}
+
 lambda17:print() {
     __out__+="${(j::)@}"
+}
+
+:lambda17:set-prompt() {
+    if ! ${_lambda17_data["conceal:empty"]:-false}; then
+        :lambda17:compile _lambda17_prompt lambda17
+    fi
+
+    PROMPT="$(:lambda17:format-prompt)"
+}
+
+:lambda17:print-prompt() {
+    print -nP "$(:lambda17:format-prompt "${@}")"
 }
 
 :lambda17:compile() {
@@ -570,26 +648,7 @@ lambda17:print() {
 }
 
 :lambda17:printable() {
-    printf "%s" "${(S)1//\&<*>/}" | sed -r 's/\x1b\[[0-9;]*m//g'
-}
-
-lambda17:transform:replace() {
-    local id="$1"
-    local prompt="$2"
-    local namespace=("${@:3}")
-    local match
-    local from
-    local to
-
-    lambda17:option "$id::replace" match
-    lambda17:option "$id::replace" from
-    lambda17:option "$id::replace" to
-
-    if [[ ! "$match" || "$prompt" =~ "$match" ]]; then
-        prompt=${(S)prompt//$from/$to}
-    fi
-
-    lambda17:print "$prompt"
+    sed -r 's/\x1b\[[0-9;]*m//g' <<< "${(S)1//\&<*>/}"
 }
 
 :lambda17:bind-widget() {
@@ -598,65 +657,51 @@ lambda17:transform:replace() {
     local func="$3"
     shift 3
 
-    local origin
+    local name="::lambda17:widget:$id:$widget:$func"
 
-    origin="$(zle -lL $widget | cut -f4- -d' ')"
+    if [[ "${widgets[$name]}" ]]; then
+        return
+    fi
 
-    eval "::lambda17:widget:$id:$widget:$func() {
+    local origin="$(zle -lL $widget | cut -f4- -d' ')"
+
+    eval "$name() {
         $func ${@} \"$id\" \"\$@\"
 
         if [[ \"$origin\" ]]; then
-            zle \"$origin\" -- \"\$@i\"
+            if [[ "\$\{widgets\[\$origin\]\}" ]]; then
+                zle \"$origin\" -- \"\$@\"
+            else
+                $origin \"\$@\"
+            fi
         fi
     }"
 
-    zle -N "::lambda17:widget:$id:$widget:$func"
-    zle -N "$widget" "::lambda17:widget:$id:$widget:$func"
+    zle -N "$name"
+    zle -N "$widget" "$name"
 }
 
-lambda17:transform:conceal() {
+:lambda17:transform:conceal:clear() {
+    :lambda17:set-prompt
+
+    zle -I
+}
+
+:lambda17:transform:conceal:reset() {
     local id="$1"
-    local prompt="$2"
-    local namespace=("${@:3}")
-    local compiled="$(print -P "$prompt")"
-    local fg
-    local bg
-    local weak
-    local ribbon
 
-    local -a wrap
+    _lambda17_data["conceal:empty"]=false
+    _lambda17_data["conceal:prev:$id"]=""
+}
 
-    lambda17:option "$id" fg
-    lambda17:option "$id" bg
+:lambda17:format-prompt() {
+    local result=${1:-$_lambda17_prompt}
 
-    lambda17:option "${id}::conceal" weak
-    lambda17:option "${id}::conceal" wrap
-    lambda17:option "${id}::conceal:override" ribbon
+    result="${(S)result//&<*>/}"
+    result="${result//%f%F/%F}"
+    result="${result//%k%K/%K}"
 
-    if [[ "$ribbon" && ! "${_lambda17_data["conceal:widget:$id"]}" ]]; then
-        :lambda17:bind-widget "$id" zle-line-finish \
-            :lambda17:transform:conceal:override
-
-        _lambda17_data["conceal:widget:$id"]=true
-    fi
-
-    if [[ "$weak" ]]; then
-        compiled="$(:lambda17:printable "$compiled")"
-    fi
-
-    if [[ "${_lambda17_data["conceal:cached:$id"]}" = "$compiled" ]]; then
-        prompt=${${fg:+${(S)prompt//\%f/%F\{$fg\}}}:-$prompt}
-        prompt=${${fg:+${(S)prompt//\%F{*}/%F\{$fg\}}}:-$prompt}
-        prompt=${${fg:+${(S)prompt//\%K{*}/%K\{$bg\}}}:-$prompt}
-        prompt=${${fg:+${(S)prompt//\&<transition>\%F{*}/%F\{$bg\}}}:-$prompt}
-        prompt=${${fg:+${(S)prompt//\&<transition>\%K{*}/%K\{$fg\}}}:-$prompt}
-        prompt=${${wrap:+${wrap[1]}$prompt${wrap[2]}}:-$prompt}
-        prompt="${prompt}%f%b%k"
-    fi
-
-    lambda17:print "$prompt"
-
-    _lambda17_data["conceal:cached:$id"]="$compiled"
+    printf '%s' "$result"
 }
 
 :lambda17:transform:conceal:override() {
@@ -764,7 +809,7 @@ lambda17:transform:conceal() {
 
     local n
 
-    if [[ "$(( $r % 10 ))" == "8" ]]; then
+    if (( $r % 10  == 8 )); then
         n=$(( 232 + ($r - 8) / 10 ))
     else
         n=$(( 16 + 36 * ($r / 43) + 6 * ($g / 43) + ($b / 43) ))
@@ -773,13 +818,41 @@ lambda17:transform:conceal() {
     printf "%d" "$n"
 }
 
-add-zsh-hook precmd :lambda17:responsible-prompt
-
-:lambda17:responsible-prompt() {
-    printf '%s' "$(print -P "${(S)_lambda17_prompt//&<*>/}")"
-}
-
 prompt_lambda17_help() lambda17:help
+
+prompt_lambda17_preview() {
+    local _lambda17_prompt
+    local dummy="\e[5m█\e[m"
+
+    local PROMPT
+    local BUFFER
+
+    printf 'lambda17 theme:\n'
+
+    (
+        zle() :
+        :lambda17:bind-widget() :
+
+        :lambda17:compile _lambda17_prompt lambda17
+        :lambda17:print-prompt
+        printf "$dummy\n\n"
+
+        :lambda17:compile _lambda17_prompt lambda17
+        :lambda17:print-prompt
+        printf "$dummy\n\n"
+
+        BUFFER='cd /etc'
+        :lambda17:compile _lambda17_prompt lambda17
+        :lambda17:transform:conceal:override "00-main"
+        print -nP "$PROMPT"
+        printf "cd /etc↵\n\n"
+
+        cd /etc
+        :lambda17:compile _lambda17_prompt lambda17
+        :lambda17:print-prompt
+        printf "$dummy\n\n"
+    )
+}
 
 :lambda17:setup "$@"
 
