@@ -13,7 +13,7 @@ lambda17:update() {
         :lambda17:compile _lambda17_prompt lambda17
     fi
 
-    PROMPT=${(S)_lambda17_prompt//\&<*>/}
+    PROMPT="${(S)_lambda17_prompt//\&<*>/}"
 }
 
 lambda17:help() {
@@ -41,11 +41,11 @@ Highly extensible color theme, vastly configure via zstyle.
     * transform: function to transform rendered block contents;
 
     To write custom block, you must define function, which will populate
-    block using 'lambda17:printf' function with same semantics, as builtin
+    block using 'lambda17:print' function with same semantics, as builtin
     'printf'. Then, new block should be declared via 'zstyle':
 
         function my-block() {
-            lambda17:printf ' [%s]' "\$(uptime -p)"
+            lambda17:print " [\$(uptime -p)]"
         }
 
         zstyle 'lambda17' 99-my-block my-block
@@ -209,10 +209,9 @@ lambda17:color() {
     zstyle "lambda17:00-main::conceal" wrap "&<conceal>" "&</conceal>"
     zstyle "lambda17:00-main::conceal:override" fg "15"
     zstyle "lambda17:00-main::conceal:override" bg "92"
-    zstyle "lambda17:00-main::conceal:override" bold true
     zstyle "lambda17:00-main::conceal:override" ribbon "─"
     zstyle "lambda17:00-main::conceal:override" format \
-        ' %T ${${${${PWD#$HOME}:-~}##*/}:-/} ${padding}%k%F{92}›%f'
+        ' %T ${${${${PWD#$HOME}:-~}##*/}:-/} ${padding}%k%F{92}%B›%b%f'
     zstyle "lambda17:00-main::conceal:override" allow-empty false
     zstyle "lambda17:00-status" transform lambda17:transform:conceal
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
@@ -290,7 +289,7 @@ lambda17:panel() {
         panel=$(printf "%${width}s" "$panel")
     fi
 
-    lambda17:printf "%s" \
+    lambda17:print \
         "${panel:+$left}" \
         "$panel" \
         "${panel:+$right}"
@@ -317,7 +316,7 @@ lambda17:transition() {
     lambda17:option "$to" bg to_bg
     lambda17:option "$to" fg to_fg
 
-    lambda17:printf "%s" \
+    lambda17:print \
         "${from_bg:+"&<transition>%F{$from_bg}"}" \
         "${to_bg:+"&<transition>%K{$to_bg}"}" \
         "$transition" \
@@ -331,7 +330,7 @@ lambda17:text() {
 
     lambda17:option "$id" text
 
-    lambda17:printf "%s" "$text"
+    lambda17:print "$text"
 }
 
 lambda17:git-head() {
@@ -378,9 +377,9 @@ lambda17:git-head() {
         fi
     fi
 
-    lambda17:printf "%s" "${fg:+"%F{$fg}"}"
-    lambda17:printf "%s" "$ref"
-    lambda17:printf "%s" "${fg:+"%f"}"
+    lambda17:print "${fg:+"%F{$fg}"}"
+    lambda17:print "$ref"
+    lambda17:print "${fg:+"%f"}"
 }
 
 lambda17:git:head() {
@@ -487,15 +486,15 @@ lambda17:clock() {
     lambda17:cached hour print -P '%D\{%l\}'
     if [[ "${_lambda17_data["clock:$id"]}" ]]; then
         if [[ "${_lambda17_data["clock:$id"]}" != "$hour" ]]; then
-            lambda17:printf "%s" "${faces:$(( $hour - 1 )):1}"
+            lambda17:print "${faces:$(( $hour - 1 )):1}"
         fi
     fi
 
     _lambda17_data["clock:$id"]="$hour"
 }
 
-lambda17:printf() {
-    __out__+=$(builtin printf "${@}")
+lambda17:print() {
+    __out__+="${(j::)@}"
 }
 
 :lambda17:compile() {
@@ -553,18 +552,21 @@ lambda17:printf() {
 
     shift
 
-    lambda17:printf "%s" \
+    # use raw escape sequences for setting and resetting bold mode,
+    # because zsh '%b' will send '\e[0m' instead of clearing bold attr
+    # only
+
+    lambda17:print \
         "${bg:+"%K{$bg}"}" \
         "${fg:+"%F{$fg}"}" \
-        "${bold:+"%B"}" \
+        "${bold:+"%B"}"
 
     "${@}"
 
-    # using '\e[22m' because zsh '%b' will send '\e[0m'
-    lambda17:printf "%s" \
-        "${bold:+$(echo -e "%{\e[22m%}")}" \
+    lambda17:print \
+        "${bold:+"%{$(printf '\e[22m')%}"}" \
         "${fg:+"%f"}" \
-        "${bg:+"%k"}"
+        "${bg:+"%b"}"
 }
 
 :lambda17:printable() {
@@ -587,7 +589,7 @@ lambda17:transform:replace() {
         prompt=${(S)prompt//$from/$to}
     fi
 
-    lambda17:printf '%s' "$prompt"
+    lambda17:print "$prompt"
 }
 
 :lambda17:bind-widget() {
@@ -649,9 +651,10 @@ lambda17:transform:conceal() {
         prompt=${${fg:+${(S)prompt//\&<transition>\%F{*}/%F\{$bg\}}}:-$prompt}
         prompt=${${fg:+${(S)prompt//\&<transition>\%K{*}/%K\{$fg\}}}:-$prompt}
         prompt=${${wrap:+${wrap[1]}$prompt${wrap[2]}}:-$prompt}
+        prompt="${prompt}%f%b%k"
     fi
 
-    lambda17:printf '%s' "$prompt"
+    lambda17:print "$prompt"
 
     _lambda17_data["conceal:cached:$id"]="$compiled"
 }
@@ -706,7 +709,7 @@ lambda17:transform:conceal() {
     if [[ "$prompt_old" != "$prompt_new" ]]; then
         __out__=""
 
-        :lambda17:stylish "${id}::conceal:override" lambda17:printf '%s' \
+        :lambda17:stylish "${id}::conceal:override" lambda17:print \
             "${(S)_lambda17_prompt//${~wrap[1]}*${~wrap[2]}/$replacement}"
 
         PROMPT=${(S)__out__//\&<*>/}
