@@ -167,9 +167,11 @@ lambda17:color() {
 
     add-zsh-hook precmd lambda17:update
 
-
     :lambda17:bind-widget ":conceal:clear" clear-screen \
         :lambda17:transform:conceal:clear
+
+    :lambda17:bind-widget ":early-type" zle-line-init \
+        :lambda17:early-type:prepare
 
     zstyle "lambda17" 00-root lambda17:panel
     zstyle "lambda17>00-root" 00-main lambda17:panel
@@ -198,7 +200,8 @@ lambda17:color() {
     # new month - new theme
     local colorscheme="$(date +%y%m)"
 
-    local terminal_bg="$(:lambda17:get-term-color)"
+    local terminal_bg
+    :lambda17:read-terminal-background terminal_bg
 
     local color_gravity=1
     if [[ "$terminal_bg" > 231 ]]; then
@@ -771,10 +774,23 @@ lambda17:print() {
     fi
 }
 
+:lambda17:early-type:prepare() {
+    if ${_lambda17_data["early-type:done"]:-false}; then
+        return
+    fi
 
-:lambda17:get-term-color() {
+    zle -U "${_lambda17_data["early-type:buffer"]}"
+
+    _lambda17_data["early-type:done"]=true
+}
+
+:lambda17:read-terminal-background() {
+    local var="$1"
+
     local stty="$(stty -g)"
     local answer
+
+    printf '\033[1K\r'
 
     stty raw -echo min 0 time 0
 
@@ -786,6 +802,7 @@ lambda17:print() {
         printf '\033]'${2:-11}';'${3:+$3;}'?\007\033\\'
     } > /dev/tty
 
+    local typed
     local tries=50
     while [[ ! "$answer" && "$tries" > 0 ]]; do
         sleep 0.01
@@ -793,9 +810,18 @@ lambda17:print() {
         read -r answer
 
         tries=$(( tries - 1 ))
+
+        if [[ "${answer:0:1}" != $'\e' ]]; then
+            typed+=$answer
+            answer=''
+
+            continue
+        fi
     done
 
     stty "$stty"
+
+    _lambda17_data["early-type:buffer"]=$typed
 
     if [[ ! "$answer" ]]; then
         return
@@ -823,7 +849,7 @@ lambda17:print() {
         n=$(( 16 + 36 * ($r / 43) + 6 * ($g / 43) + ($b / 43) ))
     fi
 
-    printf "%d" "$n"
+    eval "$var=\$n"
 }
 
 prompt_lambda17_help() lambda17:help
