@@ -393,7 +393,7 @@ lambda17:git:root() {
 
 lambda17:git:status() {
     if lambda17:git:head; then
-        lambda17:cached "$1" git status --porcelain -sb
+        lambda17:cached "$1" git status --porcelain -sb 2>/dev/null
     else
         return 1
     fi
