@@ -637,14 +637,14 @@ lambda17:print() {
     lambda17:print \
         "${bg:+"%K{$bg}"}" \
         "${fg:+"%F{$fg}"}" \
-        "${bold:+"%B"}"
+        "${bold:+"%{$(printf '\e[1m')%}"}"
 
     "${@}"
 
     lambda17:print \
         "${bold:+"%{$(printf '\e[22m')%}"}" \
         "${fg:+"%f"}" \
-        "${bg:+"%b"}"
+        "${bg:+"%k"}"
 }
 
 :lambda17:printable() {
