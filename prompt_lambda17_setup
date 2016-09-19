@@ -811,12 +811,8 @@ lambda17:print() {
 
         tries=$(( tries - 1 ))
 
-        if [[ "${answer:0:1}" != $'\e' ]]; then
-            typed+=$answer
-            answer=''
-
-            continue
-        fi
+        typed=${answer%%$'\033'*}
+        answer=${answer:${#typed}}
     done
 
     stty "$stty"
