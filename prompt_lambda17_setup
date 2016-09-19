@@ -813,11 +813,11 @@ lambda17:print() {
 
         typed=${answer%%$'\033'*}
         answer=${answer:${#typed}}
+
+        _lambda17_data["early-type:buffer"]+=$typed
     done
 
     stty "$stty"
-
-    _lambda17_data["early-type:buffer"]=$typed
 
     if [[ ! "$answer" ]]; then
         return
