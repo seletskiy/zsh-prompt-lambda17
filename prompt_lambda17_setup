@@ -5,7 +5,13 @@ typeset -gA _lambda17_cache=()
 typeset -gA _lambda17_data=()
 
 lambda17:update() {
-    :lambda17:print-prompt
+    local pre_draw
+
+    lambda17:option ":async" pre-draw
+
+    if [[ "$pre_draw" ]]; then
+        :lambda17:print-prompt
+    fi
 
     _lambda17_exit_code=$(print -P "%?")
     _lambda17_cache=()
@@ -198,6 +204,8 @@ lambda17:color() {
     if [[ "$terminal_bg" > 231 ]]; then
         color_gravity=$(( (244 - $terminal_bg) / 5 + 1 ))
     fi
+
+    zstyle "lambda17::async" pre-draw true
 
     zstyle "lambda17:00-root" transform lambda17:transform:replace
     zstyle "lambda17:00-root::replace" match "&<conceal>"
