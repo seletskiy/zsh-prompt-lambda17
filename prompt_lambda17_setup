@@ -213,17 +213,17 @@ lambda17:color() {
     zstyle "lambda17:00-root" transform lambda17:transform:replace
     zstyle "lambda17:00-root::replace" match "&<conceal>"
     zstyle "lambda17:00-root::replace" from "&<end> "
-    zstyle "lambda17:00-root::replace" to "%F{92}%B›%b%f"
+    zstyle "lambda17:00-root::replace" to "%B%F{141}›%b%f"
     zstyle "lambda17:00-main" fg "$(( $terminal_bg + 2 * $color_gravity ))"
     zstyle "lambda17:00-main" bg "$(( $terminal_bg + 1 * $color_gravity ))"
     zstyle "lambda17:00-main" transform lambda17:transform:conceal
     zstyle "lambda17:00-main::conceal" weak true
     zstyle "lambda17:00-main::conceal" wrap "&<conceal>" "&</conceal>"
     zstyle "lambda17:00-main::conceal:override" fg "15"
-    zstyle "lambda17:00-main::conceal:override" bg "92"
+    zstyle "lambda17:00-main::conceal:override" bg "99"
     zstyle "lambda17:00-main::conceal:override" ribbon "─"
     zstyle "lambda17:00-main::conceal:override" format \
-        '%B%T%k${${${${PWD#$HOME}:-~}##*/}:-/}%b%F{92}${padding}%k›%f'
+        '%B%T%k${${${${PWD#$HOME}:-~}##*/}:-/}%B%F{141}${padding}%k›%f'
     zstyle "lambda17:00-main::conceal:override" allow-empty false
     zstyle "lambda17:00-status" transform lambda17:transform:conceal
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
