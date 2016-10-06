@@ -42,7 +42,9 @@ Highly extensible color theme, vastly configure via zstyle.
     * when: evaluate shell command and display [text] only when
       exit code is 0;
     * transform: function to transform rendered block contents;
+END
 
+cat <<-END
     To write custom block, you must define function, which will populate
     block using 'lambda17:print' function with same semantics, as builtin
     'printf'. Then, new block should be declared via 'zstyle':
@@ -57,6 +59,9 @@ Highly extensible color theme, vastly configure via zstyle.
 
         zstyle -d 'lambda17>[block]'
 
+END
+
+cat <<-END
     Builtin block functions available:
     * lambda17:dir;
       - display last component of current dir;
@@ -100,6 +105,9 @@ Highly extensible color theme, vastly configure via zstyle.
       . fg-tag: fg color for tag HEAD;
       . fg-branch: fg color when current HEAD is at branch;
 
+END
+
+cat <<-END
 -------------------------------------------------------------------------
 
 Current configuration follows.
@@ -173,26 +181,50 @@ lambda17:color() {
     :lambda17:bind-widget ":early-type" zle-line-init \
         :lambda17:early-type:prepare
 
-    zstyle "lambda17" 00-root lambda17:panel
-    zstyle "lambda17>00-root" 00-main lambda17:panel
-    zstyle "lambda17>00-root>00-main" 00-status lambda17:panel
-    zstyle "lambda17>00-root>00-main>00-status" 00-banner lambda17:panel
-    zstyle "lambda17>00-root>00-main>00-status>00-banner" 00-clock lambda17:clock
-    zstyle "lambda17>00-root>00-main>00-status>00-banner" 01-git-behind lambda17:text
-    zstyle "lambda17>00-root>00-main>00-status>00-banner" 01-git-ahead lambda17:text
-    zstyle "lambda17>00-root>00-main>00-status>00-banner" 01-git-rebase lambda17:text
-    zstyle "lambda17>00-root>00-main>00-status>00-banner" 01-dir-writable lambda17:text
-    zstyle "lambda17>00-root>00-main>00-status>00-banner" 05-sign lambda17:text
-    zstyle "lambda17>00-root>00-main>00-status" 09-arrow lambda17:transition
-    zstyle "lambda17>00-root>00-main>00-status" 10-dir lambda17:panel
-    zstyle "lambda17>00-root>00-main>00-status>10-dir" 15-pwd lambda17:text
-    zstyle "lambda17>00-root>00-main" 20-git lambda17:panel
-    zstyle "lambda17>00-root>00-main>20-git" 25-head lambda17:git-head
-    zstyle "lambda17>00-root>00-main>20-git" 26-git-clean lambda17:text
-    zstyle "lambda17>00-root>00-main>20-git" 26-git-dirty lambda17:text
-    zstyle "lambda17>00-root>00-main>20-git" 25-git-conflict lambda17:text
-    zstyle "lambda17>00-root>00-main" 90-command lambda17:panel
-    zstyle "lambda17>00-root>00-main>90-command" 91-exit-code lambda17:text
+    zstyle "lambda17" \
+        00-tty lambda17:panel
+    zstyle "lambda17>00-tty" \
+        00-tty-marker lambda17:text
+    zstyle "lambda17>00-tty" \
+        00-root lambda17:panel
+    zstyle "lambda17>00-tty>00-root" \
+        00-main lambda17:panel
+    zstyle "lambda17>00-tty>00-root>00-main" \
+        00-status lambda17:panel
+    zstyle "lambda17>00-tty>00-root>00-main>00-status" \
+        00-banner lambda17:panel
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
+        00-clock lambda17:clock
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
+        01-git-behind lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
+        01-git-ahead lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
+        01-git-rebase lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
+        01-dir-writable lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
+        05-sign lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>00-status" \
+        09-arrow lambda17:transition
+    zstyle "lambda17>00-tty>00-root>00-main>00-status" \
+        10-dir lambda17:panel
+    zstyle "lambda17>00-tty>00-root>00-main>00-status>10-dir" \
+        15-pwd lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main" \
+        20-git lambda17:panel
+    zstyle "lambda17>00-tty>00-root>00-main>20-git" \
+        25-head lambda17:git-head
+    zstyle "lambda17>00-tty>00-root>00-main>20-git" \
+        26-git-clean lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>20-git" \
+        26-git-dirty lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main>20-git" \
+        25-git-conflict lambda17:text
+    zstyle "lambda17>00-tty>00-root>00-main" \
+        90-command lambda17:panel
+    zstyle "lambda17>00-tty>00-root>00-main>90-command" \
+        91-exit-code lambda17:text
 
     # cache machine identification
     lambda17:color >/dev/null
@@ -210,6 +242,12 @@ lambda17:color() {
 
     zstyle "lambda17::async" pre-draw true
 
+    zstyle "lambda17:00-tty-marker" text "&<tty>"
+    zstyle "lambda17:00-tty-marker" when "tty | grep -qF '/dev/tty'"
+    zstyle "lambda17:00-tty" transform lambda17:transform:replace
+    zstyle "lambda17:00-tty::replace" match "&<tty>"
+    zstyle "lambda17:00-tty::replace" from "*&<tty>"
+    zstyle "lambda17:00-tty::replace" to "$(tty | grep -Po 'tty\d+')> "
     zstyle "lambda17:00-root" transform lambda17:transform:replace
     zstyle "lambda17:00-root::replace" match "&<conceal>"
     zstyle "lambda17:00-root::replace" from "&<end> "
@@ -518,7 +556,7 @@ lambda17:transform:replace() {
     lambda17:option "$id::replace" to
 
     if [[ ! "$match" || "$prompt" =~ "$match" ]]; then
-        prompt=${(S)prompt//$from/$to}
+        prompt=${(S)prompt//${~from}/$to}
     fi
 
     lambda17:print "$prompt"
