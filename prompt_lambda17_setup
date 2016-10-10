@@ -128,15 +128,15 @@ lambda17:cached() {
     local __null__
 
     if [[ "$__cached__" ]]; then
-        eval "$(printf '%s=${__cached__#* }' "${1:-__null__}")"
+        eval -- "$(printf '%s=${__cached__#* }' "${1:-__null__}")"
 
         return "${__cached__%% *}"
     else
-        eval "$(
+        eval -- "$(
             printf '%s=$(eval "${@:2}")' "${1:-__null__}"
         )"
 
-        eval "$(
+        eval -- "$(
             printf '_lambda17_cache["$__key__"]="%d $%s"' "$?" "${1:-__null__}"
         )"
 
@@ -232,14 +232,6 @@ lambda17:color() {
     # new month - new theme
     local colorscheme="$(date +%y%m)"
 
-    local terminal_bg
-    :lambda17:read-terminal-background terminal_bg
-
-    local color_gravity=1
-    if [[ "$terminal_bg" > 231 ]]; then
-        color_gravity=$(( (244 - $terminal_bg) / 5 + 1 ))
-    fi
-
     zstyle "lambda17::async" pre-draw true
 
     zstyle "lambda17:00-tty-marker" text "&<tty>"
@@ -252,8 +244,8 @@ lambda17:color() {
     zstyle "lambda17:00-root::replace" match "&<conceal>"
     zstyle "lambda17:00-root::replace" from "&<end> "
     zstyle "lambda17:00-root::replace" to "%B%F{141}›%b%f"
-    zstyle "lambda17:00-main" fg "$(( $terminal_bg + 2 * $color_gravity ))"
-    zstyle "lambda17:00-main" bg "$(( $terminal_bg + 1 * $color_gravity ))"
+    zstyle "lambda17:00-main" fg "=:lambda17:taint-background 2"
+    zstyle "lambda17:00-main" bg "=:lambda17:taint-background 1"
     zstyle "lambda17:00-main" transform lambda17:transform:conceal
     zstyle "lambda17:00-main::conceal" weak true
     zstyle "lambda17:00-main::conceal" wrap "&<conceal>" "&</conceal>"
@@ -313,7 +305,32 @@ lambda17:color() {
 
 lambda17:option() {
     if zstyle -m "lambda17:$1" "$2" "*"; then
-        zstyle -g "${3:-${2//-/_}}" "lambda17:$1" "$2"
+        local __var__=${3:-${2//-/_}}
+        zstyle -g "$__var__" "lambda17:$1" "$2"
+
+        local __style__
+        eval "__style__=\$$__var__"
+
+        if [[ "${__style__:0:1}" == "=" ]]; then
+            local __cached__=${_lambda17_data["option:eval:$1:$2"]}
+            if [[ "$__cached__" ]]; then
+                __style__=$__cached__
+            else
+                # no other way around to keep write access to $_lambda17_data
+                # variable from evaluated options
+                local __buffer__=$(mktemp --suffix="-lambda17.fifo")
+
+                eval ${__style__:1} >| $__buffer__
+
+                __style__=$(cat "$__buffer__")
+
+                rm "$__buffer__"
+
+                _lambda17_data["option:eval:$1:$2"]=$__style__
+            fi
+
+            eval "$__var__=\$__style__"
+        fi
     fi
 }
 
@@ -825,37 +842,47 @@ lambda17:print() {
 :lambda17:read-terminal-background() {
     local var="$1"
 
-    local stty="$(stty -g)"
+    if [[ "$TMUX" ]]; then
+        local is_active=$(tmux display-message -p '#{session_attached}')
+
+        if [[ "$is_active" == "0" ]]; then
+            return
+        fi
+    fi
+
+    local stty
     local answer
 
-    printf '\033[1K\r'
-
-    stty raw -echo min 0 time 0
-
     {
+        lambda17:cached stty stty -g
+
+        stty raw -echo min 0 time 0
         if [[ "$TERM" =~ screen-.* ]]; then
             printf '\033Ptmux;\033'
         fi
 
         printf '\033]'${2:-11}';'${3:+$3;}'?\007\033\\'
-    } > /dev/tty
+    } > /dev/tty < /dev/tty
 
-    local typed
-    local tries=50
-    while [[ ! "$answer" && "$tries" > 0 ]]; do
-        sleep 0.01
+    # wait typical terminal to reply
+    sleep 0.001
 
-        read -r answer
+    {
+        local typed
+        local tries=50
+        while [[ ! "$answer" && "$tries" > 0 ]]; do
+            read -r answer
 
-        tries=$(( tries - 1 ))
+            tries=$(( tries - 1 ))
 
-        typed=${answer%%$'\033'*}
-        answer=${answer:${#typed}}
+            typed=${answer%%$'\033'*}
+            answer=${answer:${#typed}}
 
-        _lambda17_data["early-type:buffer"]+=$typed
-    done
+            _lambda17_data["early-type:buffer"]+=$typed
+        done
 
-    stty "$stty"
+        stty "$stty"
+    } < /dev/tty
 
     if [[ ! "$answer" ]]; then
         return
@@ -884,6 +911,28 @@ lambda17:print() {
     fi
 
     eval "$var=\$n"
+}
+
+:lambda17:taint-background() {
+    local amount=${1:-1}
+    local bg=${_lambda17_data["terminal:bg"]}
+
+    if [[ ! "$bg" ]]; then
+        :lambda17:read-terminal-background bg
+
+        _lambda17_data["terminal:bg"]=$bg
+    fi
+
+    if [[ ! "$bg" ]]; then
+        return
+    fi
+
+    local gravity=1
+    if [[ "$bg" > 231 ]]; then
+        gravity=$(( (244 - $bg) / 5 + 1 ))
+    fi
+
+    printf '%s' "$(( $bg + $amount * $gravity ))"
 }
 
 prompt_lambda17_help() lambda17:help
