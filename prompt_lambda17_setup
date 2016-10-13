@@ -240,10 +240,6 @@ lambda17:color() {
     zstyle "lambda17:00-tty::replace" match "&<tty>"
     zstyle "lambda17:00-tty::replace" from "*&<tty>"
     zstyle "lambda17:00-tty::replace" to "$(tty | grep -Po 'tty\d+')> "
-    zstyle "lambda17:00-root" transform lambda17:transform:replace
-    zstyle "lambda17:00-root::replace" match "&<conceal>"
-    zstyle "lambda17:00-root::replace" from "&<end> "
-    zstyle "lambda17:00-root::replace" to "%B%F{141}›%b%f"
     zstyle "lambda17:00-main" fg "=:lambda17:taint-background 2"
     zstyle "lambda17:00-main" bg "=:lambda17:taint-background 1"
     zstyle "lambda17:00-main" transform lambda17:transform:conceal
@@ -297,7 +293,6 @@ lambda17:color() {
     zstyle "lambda17:25-head" fg-empty "blue"
     zstyle "lambda17:25-head" text-empty "∅"
     zstyle "lambda17:90-command" min-width 1
-    zstyle "lambda17:90-command" left "&<end>"
     zstyle "lambda17:91-exit-code" text "·"
     zstyle "lambda17:91-exit-code" when '[[ $_lambda17_exit_code -ne 0 ]]'
     zstyle "lambda17:91-exit-code" fg "red"
