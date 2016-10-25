@@ -637,7 +637,7 @@ lambda17:print() {
 }
 
 :lambda17:print-prompt() {
-    print -nP "$(:lambda17:format-prompt "${@}")"
+    print -nP "\033[1K\033[1G$(:lambda17:format-prompt "${@}")"
 }
 
 :lambda17:compile() {
