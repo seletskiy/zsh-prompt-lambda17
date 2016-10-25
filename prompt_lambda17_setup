@@ -868,6 +868,9 @@ lambda17:print() {
         while [[ ! "$answer" && "$tries" > 0 ]]; do
             read -r answer
 
+            # slow terminal connection, like SSH
+            sleep 0.01
+
             tries=$(( tries - 1 ))
 
             typed=${answer%%$'\033'*}
