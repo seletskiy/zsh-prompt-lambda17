@@ -119,7 +119,7 @@ $({ zstyle -L 'lambda17'; zstyle -L 'lambda17>*'; } | sed 's/^/    /g')
 
 Configuration for blocks:
 
-$(zstyle -L 'lambda17:*' | sed 's/^/    /g')
+$(zstyle -L 'lambda17:*' | sed 's/^/    /g' | sort)
 END
 }
 
