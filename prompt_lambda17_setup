@@ -230,8 +230,9 @@ lambda17:color() {
     # cache machine identification
     lambda17:color >/dev/null
 
-    # new month - new theme
-    local colorscheme="$(date +%y%m)"
+    local colorscheme=10
+
+    lambda17:option ':' colorscheme
 
     zstyle "lambda17::async" pre-draw true
 
