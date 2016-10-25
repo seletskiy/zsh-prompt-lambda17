@@ -5,6 +5,8 @@ typeset -gA _lambda17_cache=()
 typeset -gA _lambda17_data=()
 
 lambda17:update() {
+    _lambda17_exit_code=$?
+
     local pre_draw
 
     lambda17:option ":async" pre-draw
@@ -13,7 +15,6 @@ lambda17:update() {
         :lambda17:print-prompt
     fi
 
-    _lambda17_exit_code=$(print -P "%?")
     _lambda17_cache=()
 
     :lambda17:set-prompt
