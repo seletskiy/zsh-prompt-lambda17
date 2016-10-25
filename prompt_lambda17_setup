@@ -730,6 +730,11 @@ lambda17:print() {
 
     local origin="$(zle -lL $widget | cut -f4- -d' ')"
 
+    local is_builtin=false
+    if [[ "${widgets[$widget]}" == "builtin" ]]; then
+        is_builtin=true
+    fi
+
     eval "$name() {
         $func ${@} \"$id\" \"\$@\"
 
@@ -738,6 +743,10 @@ lambda17:print() {
                 zle \"$origin\" -- \"\$@\"
             else
                 $origin \"\$@\"
+            fi
+        else
+            if $is_builtin; then
+                zle .$widget
             fi
         fi
     }"
