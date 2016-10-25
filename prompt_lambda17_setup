@@ -1,3 +1,5 @@
+zmodload zsh/mathfunc
+
 typeset -g  _lambda17_prompt=''
 typeset -g  _lambda17_machine_id=''
 typeset -g  _lambda17_exit_code=0
@@ -902,15 +904,16 @@ lambda17:print() {
     g=$(( 16#$g ))
     b=$(( 16#$b ))
 
-    local n
+    local color_index
+    local diff=$(( (fabs($r - $g) + fabs($g - $b) + fabs($b - $r)) / 3 ))
 
-    if (( $r % 10  == 8 )); then
-        n=$(( 232 + ($r - 8) / 10 ))
+    if (( $diff <= 8 )); then
+        color_index=$(( 232 + ($r - 8) / 10 ))
     else
-        n=$(( 16 + 36 * ($r / 43) + 6 * ($g / 43) + ($b / 43) ))
+        color_index=$(( 16 + 36 * ($r / 40) + 6 * ($g / 40) + ($b / 40) ))
     fi
 
-    eval "$var=\$n"
+    eval "$var=\$color_index"
 }
 
 :lambda17:taint-background() {
