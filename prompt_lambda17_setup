@@ -850,6 +850,10 @@ lambda17:print() {
 :lambda17:read-terminal-background() {
     local var="$1"
 
+    if [[ "$(tty)" =~ ^/dev/tty ]]; then
+        return
+    fi
+
     if [[ "$TMUX" ]]; then
         local is_active=$(tmux display-message -p '#{session_attached}')
 
