@@ -253,7 +253,7 @@ lambda17:color() {
     zstyle "lambda17:00-main::conceal:override" bg "99"
     zstyle "lambda17:00-main::conceal:override" ribbon "─"
     zstyle "lambda17:00-main::conceal:override" format \
-        '%T%k%F{99}%F{15}%k${${${${${PWD#$HOME}:-~}##*/}:-/}/\\~/}%B${padding} %f'
+        '%T%k%F{99}%F{15}%k${${${${${PWD#$HOME}:-~}##*/}:-/}/\\~/}%B${padding} %f%b'
     zstyle "lambda17:00-main::conceal:override" allow-empty false
     zstyle "lambda17:00-status" transform lambda17:transform:conceal
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
@@ -276,7 +276,7 @@ lambda17:color() {
     zstyle "lambda17:25-git-conflict" text "!"
     zstyle "lambda17:25-git-conflict" when "lambda17:git:is-conflict"
     zstyle "lambda17:25-git-conflict" fg "red"
-    zstyle "lambda17:25-git-conflict" bold "red"
+    zstyle "lambda17:25-git-conflict" bold true
     zstyle "lambda17:26-git-clean" text "✓"
     zstyle "lambda17:26-git-clean" when "lambda17:git:is-clean"
     zstyle "lambda17:26-git-clean" fg "green"
