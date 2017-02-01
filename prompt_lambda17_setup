@@ -615,9 +615,10 @@ lambda17:transform:conceal() {
         prompt=${${fg:+${(S)prompt//\%K{*}/%K\{$bg\}}}:-$prompt}
         prompt=${${fg:+${(S)prompt//\&<transition>\%F{*}/%F\{$bg\}}}:-$prompt}
         prompt=${${fg:+${(S)prompt//\&<transition>\%K{*}/%K\{$fg\}}}:-$prompt}
-        prompt=${${wrap:+${wrap[1]}$prompt${wrap[2]}}:-$prompt}
         prompt="${prompt}%f%b%k"
     fi
+
+    prompt=${${wrap:+${wrap[1]}$prompt${wrap[2]}}:-$prompt}
 
     lambda17:print "$prompt"
 
