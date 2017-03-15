@@ -835,6 +835,9 @@ lambda17:print() {
         PROMPT=${(S)__out__//\&<*>/}
 
         zle redisplay
+
+        # remove zsh autosuggestion suffix
+        unset POSTDISPLAY
     fi
 }
 
