@@ -342,19 +342,27 @@ lambda17:panel() {
     local id="$1"
     local namespace=("${@:2}")
 
+    local omit_empty
     local min_width
     local left
     local right
 
+    lambda17:option "$id" omit-empty
     lambda17:option "$id" min-width
     lambda17:option "$id" left
     lambda17:option "$id" right
 
     local panel
     :lambda17:compile panel "${namespace[@]}" "$id"
+    if [[ "$min_width" || "$omit_empty" ]]; then
+        local visible="$(:lambda17:printable "$(print -P "${panel//\%</\\%<}")")"
+    fi
+
+    if [[ $omit_empty && ! "$visible" ]]; then
+        return
+    fi
 
     if [[ "$min_width" ]]; then
-        local visible="$(:lambda17:printable "$(print -P "${panel//\%</\\%<}")")"
         local width=$(( $min_width + ${#panel} - ${#visible} ))
 
         panel=$(printf "%${width}s" "$panel")
