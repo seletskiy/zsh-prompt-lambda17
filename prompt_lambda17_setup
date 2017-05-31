@@ -197,8 +197,6 @@ lambda17:color() {
     zstyle "lambda17>00-tty>00-root>00-main>00-status" \
         00-banner lambda17:panel
     zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
-        00-clock lambda17:clock
-    zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
         01-git-stash lambda17:text
     zstyle "lambda17>00-tty>00-root>00-main>00-status>00-banner" \
         01-git-behind lambda17:text
@@ -261,7 +259,6 @@ lambda17:color() {
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
     zstyle "lambda17:00-banner" fg "$(lambda17:color 1 "$colorscheme")"
     zstyle "lambda17:00-banner" min-width 2
-    zstyle "lambda17:00-clock" faces "🕐🕑🕒🕓🕔🕕🕖🕗🕘🕙🕚🕛"
     zstyle "lambda17:00-clock" bold true
     zstyle "lambda17:01-git-stash" text "●"
     zstyle "lambda17:01-git-stash" when "lambda17:git:has-stash"
@@ -559,25 +556,6 @@ lambda17:git:is-rebase() {
     else
         return 1
     fi
-}
-
-lambda17:clock() {
-    local id="$1"
-
-    local faces
-
-    lambda17:option "$id" faces
-
-    local hour
-
-    lambda17:cached hour print -P '%D\{%l\}'
-    if [[ "${_lambda17_data["clock:$id"]}" ]]; then
-        if [[ "${_lambda17_data["clock:$id"]}" != "$hour" ]]; then
-            lambda17:print "${faces:$(( $hour - 1 )):1}"
-        fi
-    fi
-
-    _lambda17_data["clock:$id"]="$hour"
 }
 
 lambda17:transform:replace() {
