@@ -831,12 +831,9 @@ lambda17:print() {
         :lambda17:stylish "${id}::conceal:override" lambda17:print \
             "${(S)_lambda17_prompt//${~wrap[1]}*${~wrap[2]}/$replacement}"
 
-        PROMPT=${(S)__out__//\&<*>/}
+        __out__=${(S)__out__//\&<*>/}
 
-        zle redisplay
-
-        # remove zsh autosuggestion suffix
-        unset POSTDISPLAY
+        print -Pn "\r$__out__\${BUFFER}"
     fi
 }
 
