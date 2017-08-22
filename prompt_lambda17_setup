@@ -833,7 +833,9 @@ lambda17:print() {
 
         __out__=${(S)__out__//\&<*>/}
 
-        print -Pn "\r$__out__\${BUFFER}"
+        local buffer=${BUFFER//\%/%%}
+
+        print -Pn "\r$__out__\${buffer}"
     fi
 }
 
