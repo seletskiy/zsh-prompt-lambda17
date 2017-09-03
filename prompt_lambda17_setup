@@ -835,6 +835,14 @@ lambda17:print() {
 
         local buffer=${BUFFER//\%/%%}
 
+        local prompt_old_visible=$(:lambda17:printable "$prompt_old")
+
+        local offset=$(( (${#prompt_old_visible} + ${#BUFFER}) / $COLUMNS ))
+
+        if [ "$offset" -gt 0 ]; then
+            print -n "\e[${offset}A"
+        fi
+
         print -Pn "\r$__out__\${buffer}"
     fi
 }
