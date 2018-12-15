@@ -941,7 +941,10 @@ lambda17:print() {
 
 :lambda17:taint-background() {
     local amount=${1:-1}
+
     local bg=${_lambda17_data["terminal:bg"]}
+
+    lambda17:option ':terminal' bg
 
     if [[ ! "$bg" ]]; then
         :lambda17:read-terminal-background bg
