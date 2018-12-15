@@ -796,16 +796,6 @@ lambda17:print() {
     lambda17:option "${id}::conceal:override" allow-empty
     lambda17:option "${id}::conceal:override" format
 
-    if [[ ! "$BUFFER" ]] && ! $allow_empty; then
-        _lambda17_data["conceal:empty"]=true
-
-        PROMPT=""
-
-        zle redisplay
-
-        return
-    fi
-
     local padding
     local replacement="$(print -P "$format")"
 
@@ -814,6 +804,15 @@ lambda17:print() {
 
     local prompt_old="$(:lambda17:printable "$(print -P "$trimmed")")"
     local prompt_new="$(:lambda17:printable "$(print -P "$stripped")")"
+
+    if [[ ! "$BUFFER" ]] && ! $allow_empty; then
+        _lambda17_data["conceal:empty"]=true
+
+        print -n "\r$(printf " %.0s" {1..${#prompt_old}})"
+        zle -I
+
+        return
+    fi
 
     if (( ${#prompt_old} - ${#prompt_new} > 0 )); then
         padding="$(
