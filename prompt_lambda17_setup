@@ -152,7 +152,7 @@ lambda17:color() {
     local scheme="${2:-0}"
 
     if [[ ! "$_lambda17_machine_id" ]]; then
-        _lambda17_machine_id="$(systemd-machine-id-setup --print)"
+        _lambda17_machine_id="$(cat /etc/machine-id)"
     fi
 
     # based upon http://jimlund.org/blog/pics/colortest_iTerm.png
@@ -463,7 +463,9 @@ lambda17:git:head() {
 }
 
 lambda17:git:root() {
-    lambda17:cached "$1" git rev-parse --show-toplevel 2>/dev/null
+    if lambda17:git:head; then
+        lambda17:cached "$1" git rev-parse --show-toplevel 2>/dev/null
+    fi
 }
 
 lambda17:git:status() {
