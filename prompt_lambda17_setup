@@ -251,9 +251,9 @@ lambda17:color() {
     zstyle "lambda17:00-main::conceal" wrap "&<conceal>" "&</conceal>"
     zstyle "lambda17:00-main::conceal:override" fg "15"
     zstyle "lambda17:00-main::conceal:override" bg "99"
-    zstyle "lambda17:00-main::conceal:override" ribbon "─"
+    zstyle "lambda17:00-main::conceal:override" ribbon "━"
     zstyle "lambda17:00-main::conceal:override" format \
-        '%B%T%k %f%k${${${${${${PWD#$HOME}:-~}##*/}:-/}/\\~/}}%B${padding}%b: %f'
+        '%B%T%k %f%k${${${${${${PWD#$HOME}:-~}##*/}:-/}/\\~/}}%B${padding}%b❱ %f'
     zstyle "lambda17:00-main::conceal:override" allow-empty false
     zstyle "lambda17:00-status" transform lambda17:transform:conceal
     zstyle "lambda17:00-banner" bg "$(lambda17:color 0 "$colorscheme")"
