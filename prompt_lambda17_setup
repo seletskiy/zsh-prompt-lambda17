@@ -1001,8 +1001,6 @@ prompt_lambda17_preview() {
     )
 }
 
-fpath+=("${0:A:h}")
-
 :lambda17:setup "$@"
 
 # vim: ft=zsh
