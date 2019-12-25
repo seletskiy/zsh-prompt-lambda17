@@ -788,6 +788,7 @@ lambda17:print() {
     local ribbon
     local format
     local allow_empty
+    local right
 
     local -a wrap
 
@@ -797,6 +798,7 @@ lambda17:print() {
     lambda17:option "${id}::conceal:override" ribbon
     lambda17:option "${id}::conceal:override" allow-empty
     lambda17:option "${id}::conceal:override" format
+    lambda17:option "${id}::conceal:override" right
 
     local padding
     local replacement="$(print -P "$format")"
@@ -844,7 +846,16 @@ lambda17:print() {
             print -n "\e[${offset}A"
         fi
 
-        print -Pn "\r$__out__\${buffer}"
+        # XXX: keep highlighting?
+        #print -Pn "\r$__out__\${buffer}"
+        print -Pn "\r$__out__"
+    fi
+
+    if [[ "$right" ]]; then
+        local printable="$(:lambda17:printable "$(print -Pn "$right")")"
+        local offset=$((${#printable} - 1))
+
+        print -Pn '\e7\e[${COLUMNS}G\e[${offset}D${right}\e8'
     fi
 }
 
