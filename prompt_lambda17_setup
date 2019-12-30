@@ -861,7 +861,7 @@ lambda17:print() {
 
             print -Pn "\e7\e[${COLUMNS}G\e[${offset}D${right}\e8"
         else
-            print -Pn "${right}"
+            print -Pn "\e7\r\e[$((${#prompt_new}+${#BUFFER}+1))C${right}\e8"
         fi
     fi
 }
