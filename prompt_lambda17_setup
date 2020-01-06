@@ -849,20 +849,22 @@ lambda17:print() {
         fi
 
         print -Pn "\r$__out__"
-        if [[ "$right" && !$right_justify ]]; then
-            print -Pn "\e[${#buffer}C"
-        fi
+
+        prompt_new="$(:lambda17:printable "$(print -P "$__out__")")"
     fi
 
     if [[ "$right" ]]; then
+        print -Pn "\e7"
         if $right_justify; then
             local printable="$(:lambda17:printable "$(print -Pn "$right")")"
             local offset=$((${#printable} - 1))
 
-            print -Pn "\e7\e[${COLUMNS}G\e[${offset}D${right}\e8"
+            print -Pn "\e[${COLUMNS}G\e[${offset}D"
         else
-            print -Pn "\e7\r\e[$((${#prompt_new}+${#BUFFER}+1))C${right}\e8"
+            print -Pn "\r\e[$((${#prompt_new}+${#BUFFER}))C"
         fi
+
+        print -Pn "${right}\e8"
     fi
 }
 
