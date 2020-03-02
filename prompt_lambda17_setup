@@ -830,6 +830,9 @@ lambda17:print() {
 
     _lambda17_data["conceal:empty"]=false
 
+    local prompt_old_visible=$(:lambda17:printable "$prompt_old")
+    local offset=$(( (${#prompt_old_visible} + $CURSOR) / $COLUMNS ))
+
     if [[ "$prompt_old" != "$prompt_new" ]]; then
         __out__=""
 
@@ -840,28 +843,31 @@ lambda17:print() {
 
         local buffer=${BUFFER//\%/%%}
 
-        local prompt_old_visible=$(:lambda17:printable "$prompt_old")
-
-        local offset=$(( (${#prompt_old_visible} + $CURSOR) / $COLUMNS ))
-
         if [ "$offset" -gt 0 ]; then
-            print -n "\e[${offset}A"
+            print -n "\e7\e[${offset}A"
         fi
 
         print -Pn "\r$__out__"
 
+        if [ "$offset" -gt 0 ]; then
+            print -n "\e8"
+        fi
+
         prompt_new="$(:lambda17:printable "$(print -P "$__out__")")"
+
+        #print -Pn "\r\e[${#prompt_new}C"
     fi
 
     if [[ "$right" ]]; then
         print -Pn "\e7"
+
         if $right_justify; then
             local printable="$(:lambda17:printable "$(print -Pn "$right")")"
             local offset=$((${#printable} - 1))
 
             print -Pn "\e[${COLUMNS}G\e[${offset}D"
         else
-            print -Pn "\r\e[$((${#prompt_new}+${#BUFFER}))C"
+            print -Pn "\r\e[$((${#prompt_new}+${#BUFFER} - $COLUMNS * $offset))C"
         fi
 
         print -Pn "${right}\e8"
