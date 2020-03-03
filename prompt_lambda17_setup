@@ -831,7 +831,7 @@ lambda17:print() {
     _lambda17_data["conceal:empty"]=false
 
     local prompt_old_visible=$(:lambda17:printable "$prompt_old")
-    local offset=$(( (${#prompt_old_visible} + $CURSOR) / $COLUMNS ))
+    local top_offset=$(( (${#prompt_old_visible} + $CURSOR) / $COLUMNS ))
 
     if [[ "$prompt_old" != "$prompt_new" ]]; then
         __out__=""
@@ -843,19 +843,17 @@ lambda17:print() {
 
         local buffer=${BUFFER//\%/%%}
 
-        if [ "$offset" -gt 0 ]; then
-            print -n "\e7\e[${offset}A"
+        if [ "$top_offset" -gt 0 ]; then
+            print -n "\e7\e[${top_offset}A"
         fi
 
         print -Pn "\r$__out__"
 
-        if [ "$offset" -gt 0 ]; then
+        if [ "$top_offset" -gt 0 ]; then
             print -n "\e8"
         fi
 
         prompt_new="$(:lambda17:printable "$(print -P "$__out__")")"
-
-        #print -Pn "\r\e[${#prompt_new}C"
     fi
 
     if [[ "$right" ]]; then
@@ -863,11 +861,20 @@ lambda17:print() {
 
         if $right_justify; then
             local printable="$(:lambda17:printable "$(print -Pn "$right")")"
-            local offset=$((${#printable} - 1))
+            local top_offset=$((${#printable} - 1))
 
-            print -Pn "\e[${COLUMNS}G\e[${offset}D"
+            print -Pn "\e[${COLUMNS}G\e[${top_offset}D"
         else
-            print -Pn "\r\e[$((${#prompt_new}+${#BUFFER} - $COLUMNS * $offset))C"
+            if [ "$top_offset" -gt 0 ]; then
+                print -Pn "\e[${top_offset}A"
+            fi
+
+            local bottom_offset=$(( (${#prompt_new} + ${#BUFFER}) / $COLUMNS ))
+            if [[ "$bottom_offset" -gt 0 ]]; then
+                print -Pn "\e[${bottom_offset}B"
+            fi
+
+            print -Pn "\r\e[$(( (${#prompt_new} + ${#BUFFER}) % $COLUMNS ))C"
         fi
 
         print -Pn "${right}\e8"
