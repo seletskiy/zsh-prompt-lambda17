@@ -783,6 +783,10 @@ lambda17:print() {
 :lambda17:transform:conceal:override() {
     local id="$1"
 
+    if [[ "$CONTEXT" != "start" ]]; then
+        return
+    fi
+
     local fg
     local bg
     local ribbon
