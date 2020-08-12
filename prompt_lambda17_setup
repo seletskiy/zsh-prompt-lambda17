@@ -806,7 +806,7 @@ lambda17:print() {
     lambda17:option "${id}::conceal:override" right
     lambda17:option "${id}::conceal:override" right-justify
 
-    local padding
+    local padding=""
     local replacement="$(print -P "$format")"
 
     local stripped=${(S)_lambda17_prompt//${~wrap[1]}*${~wrap[2]}/$replacement}
@@ -835,17 +835,26 @@ lambda17:print() {
     _lambda17_data["conceal:empty"]=false
 
     local prompt_old_visible=$(:lambda17:printable "$prompt_old")
+    local prompt_new_visible=$(:lambda17:printable "$prompt_new")
 
     local top_offset=0
     local buffer_line
     local buffer_lines=("${(@f)BUFFER}")
     local buffer_cursor=0
+    local buffer_prompt_offset=0
+
     for buffer_line in "${buffer_lines[@]}"; do
+        if [[ $buffer_cursor == 0 ]]; then
+            buffer_prompt_offset=$(( ${#prompt_new_visible} + ${#padding} ))
+        else
+            buffer_prompt_offset=0
+        fi
+
         (( buffer_cursor += ${#buffer_line} ))
         if (( $CURSOR >= $buffer_cursor + 1 )); then
             (( top_offset += ${#buffer_line} / $COLUMNS + 1 ))
         else
-            (( top_offset += (${#buffer_line} - ($buffer_cursor - $CURSOR)) / $COLUMNS ))
+            (( top_offset += (${#buffer_line} - ($buffer_cursor - $CURSOR) + $buffer_prompt_offset) / $COLUMNS ))
         fi
         (( buffer_cursor += 1 ))
     done
